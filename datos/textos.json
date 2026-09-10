@@ -1,0 +1,207 @@
+{
+ "_nota": "Toda la copia de la interfaz vive aquí. El código NO escribe texto en español nunca. Si falta una cadena, se agrega a este archivo y se referencia por su clave; no se escribe suelta en el JS. Esto es lo que evita que cinco archivos inventen cinco vocabularios distintos.",
+
+ "_reglas": [
+  "Si hay que leerlo dos veces, está mal escrito. Es el único criterio.",
+  "Botones: verbo primero, de 1 a 3 palabras, sin punto final.",
+  "Etiquetas y títulos: sin punto final. Textos de ayuda: con punto.",
+  "Errores: qué pasó y luego qué hacer. Una frase. Sin la palabra Error al inicio.",
+  "Nunca: correctamente, exitosamente, por favor, simplemente, haz clic aquí.",
+  "Mayúscula solo al inicio y en nombres propios. Nunca Todo En Mayúsculas Iniciales.",
+  "Nada de vocabulario que no esté en el curso. Si el curso dice snapshot, la app dice snapshot.",
+  "Máximo 8 palabras en un botón, 12 en una etiqueta."
+ ],
+
+ "_renombres": {
+  "_nota": "Cambios obligatorios. La columna de la izquierda queda prohibida en toda la app.",
+  "Regreso": "Mi progreso",
+  "Tu regreso": "Mi progreso",
+  "Regreso · 0%": "Mi progreso · 0%",
+  "Fase final": "Cierre del curso",
+  "Bitácora y recuperación": "Bitácora",
+  "Autocorrector": "Revisar salida",
+  "Avería": "Practicar averías",
+  "Aún sin snapshot esperado": "Todavía no toca guardar copia",
+  "Todavía estás antes del primer punto de control del servidor.": "La primera copia de seguridad se hace en la sesión 2.",
+  "Estado real del VPS": "Dónde está tu servidor",
+  "Sin marcar": "Sin registrar",
+  "Marcar servidor aquí": "Mi servidor está aquí",
+  "Servidor aquí ✓": "Aquí está tu servidor",
+  "Qué debería tener tu máquina": "Qué debería tener instalado tu servidor",
+  "Gasto estimado del VPS": "Lo que llevás gastado",
+  "Introduce el precio mensual y la fecha de alta para calcular una estimación.": "Escribí el precio y desde cuándo lo tenés, y calculo el gasto.",
+  "Es una estimación prorrateada; no sustituye la factura del proveedor.": "Es un cálculo aproximado. La factura real la manda tu proveedor.",
+  "Dónde vas · dónde está tu servidor · cuánto llevas gastado": "Tu avance, tu servidor y tu gasto",
+  "Documentar · recuperar · reconstruir": "Lo que anotás mientras aprendés",
+  "Esto no mide tiempo de lectura: mide evidencia práctica de las sesiones 19 y 20.": "Esto no cuenta lo que leíste. Cuenta lo que probaste.",
+  "Hay una comprobación que requiere atención": "Falta revisar una cosa",
+  "Todavía quedan pruebas por cerrar": "Todavía te faltan pruebas",
+  "Revisa las comprobaciones de abajo antes de considerar cerrada la entrega.": "Revisá lo de abajo antes de dar por terminado el curso.",
+  "El navegador no permitió guardar el progreso.": "Este navegador no está guardando tu avance. Exportá al terminar cada sesión.",
+  "No parece una copia exportada por esta plataforma.": "Ese archivo no lo exportó esta plataforma.",
+  "Esto reemplazará el progreso guardado en este navegador. ¿Continuar?": "Esto borra tu avance y lo cambia por el del archivo.",
+  "Sin entradas.": "Todavía no escribiste nada.",
+  "Sin evaluar": "Todavía no contestás",
+  "Sin nota final.": "Todavía no escribiste el cierre.",
+  "Escribe al menos 2 caracteres.": "Escribí al menos dos letras."
+ },
+
+ "nav": {
+  "curso": "VPS desde cero",
+  "sesionDe": "Sesión {n} de 20",
+  "menu": "Abrir menú",
+  "anterior": "Anterior",
+  "siguiente": "Siguiente",
+  "cerrar": "Cerrar",
+  "volverSesion": "Volver a la sesión"
+ },
+
+ "menu": {
+  "progreso": "Mi progreso",
+  "bitacora": "Bitácora",
+  "averias": "Practicar averías",
+  "buscar": "Buscar",
+  "mapa": "Mapa del curso",
+  "ajustes": "Ajustes",
+  "cierre": "Cierre del curso"
+ },
+
+ "bienvenida": {
+  "titulo": "Bienvenido",
+  "subtitulo": "Vas a montar un servidor de verdad en cuatro semanas.",
+  "pedirNombre": "¿Cómo te llamás?",
+  "nombreAyuda": "Solo para saludarte. No sale de este navegador.",
+  "pedirSO": "¿En qué computadora vas a trabajar?",
+  "opcionWindows": "Windows",
+  "opcionMac": "Mac",
+  "opcionLinux": "Linux",
+  "soAyuda": "La sesión 1 cambia según esto. Lo preguntamos ahora para no interrumpirte después.",
+  "pedirCosto": "¿Cuánto te cuesta el VPS al mes?",
+  "costoAyuda": "Si todavía no lo comprás, dejalo en blanco y lo llenás en la sesión 2.",
+  "empezar": "Empezar",
+  "saludo": "{saludo}, {nombre}"
+ },
+
+ "saludos": {
+  "manana": "Buenos días",
+  "tarde": "Buenas tardes",
+  "noche": "Buenas noches"
+ },
+
+ "desbloqueo": {
+  "titulo": "Algo nuevo",
+  "continuar": "Entendido",
+  "bitacora": {
+   "titulo": "La bitácora",
+   "cuerpo": "Desde hoy, cada sesión termina con una pregunta: qué pasó. Escribilo con tus palabras.\n\nNo es tarea. En la sesión 20 vas a necesitar un documento de recuperación, y va a estar escrito por vos sin que te dieras cuenta."
+  },
+  "snapshots": {
+   "titulo": "Los snapshots",
+   "cuerpo": "Un snapshot es una foto completa de tu servidor. Si algo se rompe, volvés a la foto y seguís.\n\nVas a hacer seis en todo el curso, siempre antes de tocar algo delicado. La app lleva la cuenta de cuáles tenés y en cuál está parada tu máquina.\n\nOjo: cobran mientras existan. En la sesión 20 los borrás."
+  },
+  "riel": {
+   "titulo": "El mapa de capas",
+   "cuerpo": "Cuando alguien visita tu sitio, la petición pasa por nueve piezas en fila. Si algo falla, falla en una de ellas.\n\nDesde hoy vas a ver ese mapa al lado, con la pieza de cada sesión encendida. Diagnosticar es saber en cuál de las nueve estás parado."
+  },
+  "averias": {
+   "titulo": "Practicar averías",
+   "cuerpo": "Ya viste tu primer 502. Ahora podés practicar los otros once.\n\nSale un síntoma y vos decís en qué capa está, cómo lo comprobás y cómo se arregla. Las que fallés vuelven a salir a los pocos días.\n\nAquí sí hay cronómetro, porque en una caída real los minutos cuestan."
+  }
+ },
+
+ "progreso": {
+  "titulo": "Mi progreso",
+  "subtitulo": "Tu avance, tu servidor y tu gasto",
+  "continuar": "Seguir donde quedaste",
+  "sesionesHechas": "{n} de 20 sesiones",
+  "casillas": "{n} de 101 comprobaciones",
+  "quiz": "{n} de 71 preguntas",
+  "servidorTitulo": "Dónde está tu servidor",
+  "servidorSinRegistrar": "Todavía no registrás ningún snapshot.",
+  "servidorAqui": "Aquí está tu servidor",
+  "marcarAqui": "Mi servidor está aquí",
+  "desfaseTitulo": "Tu servidor va atrasado",
+  "desfaseCuerpo": "Está en {snap} pero vos vas en la sesión {n}. Te falta instalar: {falta}.",
+  "snapshotsVivos": "Tenés {n} snapshots guardados. Cobran mientras existan.",
+  "gastoTitulo": "Lo que llevás gastado",
+  "gastoDias": "{n} días encendido",
+  "borrar": "Borrar todo mi avance",
+  "borrarConfirma": "Esto borra tu avance en este navegador y no se puede deshacer."
+ },
+
+ "sesion": {
+  "paso": "{bloque} · paso {n} de 6",
+  "bloqueIdea": "Idea",
+  "bloqueMision": "Misión",
+  "bloqueSalida": "Salida sana",
+  "bloqueAlarma": "Señal de alarma",
+  "bloqueCheck": "Comprobaciones",
+  "bloqueQuiz": "Preguntas",
+  "bloqueCierre": "Cierre",
+  "cierrePregunta": "¿Qué pasó hoy?",
+  "cierreAyuda": "Con tus palabras. Dos líneas bastan.",
+  "cierreGuardar": "Terminar sesión",
+  "cierreSaltar": "Terminar sin anotar",
+  "copiar": "Copiar",
+  "copiado": "Copiado",
+  "etiquetaComando": "Escribí esto",
+  "etiquetaSalida": "Deberías ver esto"
+ },
+
+ "revisar": {
+  "titulo": "Revisar salida",
+  "ayuda": "Pegá lo que te devolvió la terminal y te digo qué veo.",
+  "analizar": "Revisar",
+  "loQueVeo": "Lo que veo",
+  "vacio": "Pegá la salida completa, con la primera línea."
+ },
+
+ "averias": {
+  "titulo": "Practicar averías",
+  "sintoma": "El síntoma",
+  "preguntaCapa": "¿En qué capa está?",
+  "preguntaComprobar": "¿Con qué lo comprobás?",
+  "preguntaArreglo": "¿Cómo se arregla?",
+  "verRespuesta": "Ver la respuesta",
+  "loSabia": "La sabía",
+  "paraRepasar": "Para repasar",
+  "mazoLimpio": "No tenés tarjetas pendientes. Podés practicar todas si querés.",
+  "mejorTiempo": "Tu mejor tiempo: {t}"
+ },
+
+ "ajustes": {
+  "titulo": "Ajustes",
+  "tema": "Colores",
+  "temaSistema": "Como mi sistema",
+  "temaClaro": "Claro",
+  "temaOscuro": "Oscuro",
+  "nombre": "Tu nombre",
+  "so": "Tu computadora",
+  "perfiles": "Personas",
+  "exportar": "Exportar mi avance",
+  "exportarAyuda": "Baja un archivo .md con todo. Guardalo si vas a cambiar de navegador.",
+  "importar": "Abrir un archivo exportado"
+ },
+
+ "perfiles": {
+  "titulo": "Personas",
+  "mio": "Mi avance",
+  "abrirComoOtra": "Abrir como otra persona",
+  "abrirComoOtraAyuda": "Crea un espacio aparte. Tu avance no se toca.",
+  "reemplazar": "Reemplazar el mío",
+  "reemplazarAyuda": "Borra tu avance y lo cambia por el del archivo.",
+  "deshacer": "Deshacer",
+  "viendoOtro": "Estás viendo el avance de {nombre}, no el tuyo.",
+  "volverAlMio": "Volver a mi avance",
+  "eliminar": "Eliminar esta persona"
+ },
+
+ "cierre": {
+  "titulo": "Cierre del curso",
+  "subtitulo": "Terminar bien incluye dejar de pagar",
+  "borrarSnapshots": "Borrá estos snapshots",
+  "gastoFinal": "Gastaste {monto} en total",
+  "exportarTodo": "Bajar todo mi curso",
+  "guardarRunbook": "Guardar mi documento de recuperación"
+ }
+}
