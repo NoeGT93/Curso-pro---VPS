@@ -22,16 +22,17 @@ def curso():
     assert len(data.get('tarjetas',[]))==12, 'Se esperaban 12 tarjetas'
     return compactar(data)
 def js(p): return p.read_text(encoding='utf-8').replace('</script>','<\\/script>')
-def validar_html(html):
+def validar_plantilla(html):
+    if re.search(r'<script\b[^>]*\bsrc\s*=',html,re.I): raise SystemExit('La plantilla contiene JavaScript externo')
+    if re.search(r'<link\b[^>]*rel=["\']?stylesheet[^>]*href=["\']?https?://',html,re.I): raise SystemExit('La plantilla contiene una hoja de estilo externa')
+def validar_salida(html):
     marcadores=re.findall(r'__[A-Z0-9_]+__',html)
     if marcadores: raise SystemExit('Quedaron marcadores sin sustituir: '+', '.join(sorted(set(marcadores))))
-    if re.search(r'<script\b[^>]*\bsrc\s*=',html,re.I): raise SystemExit('La salida contiene JavaScript externo')
-    if re.search(r'<link\b[^>]*rel=["\']?stylesheet[^>]*href=["\']?https?://',html,re.I): raise SystemExit('La salida contiene una hoja de estilo externa')
     for token in ('cursoVpsEstadoV3','cursoVpsAveriaV1','cursoVpsBitacoraV1','cursoVpsFase6V1'):
         if token not in html: raise SystemExit(f'Falta módulo/estado esperado: {token}')
     if '<html lang="es">' not in html: raise SystemExit('Falta lang=es')
 def main():
-    html=PLANTILLA.read_text(encoding='utf-8')
+    html=PLANTILLA.read_text(encoding='utf-8'); validar_plantilla(html)
     rep={'__CURSO_JSON__':curso(),'__REGLAS_JSON__':archivo(ROOT/'datos'/'reglas.json'),'__INSTALA_JSON__':archivo(ROOT/'datos'/'instala.json'),'__RIEL_JSON__':archivo(ROOT/'datos'/'riel.json'),'__APP_JS__':js(APP)}
     for k,v in rep.items():
         if k not in html: raise SystemExit(f'Falta marcador {k}')
@@ -39,6 +40,6 @@ def main():
     extra=''.join('<script>'+js(p)+'</script>' for p in (AVERIA,FASE5,FASE6))
     if '</body>' not in html: raise SystemExit('La plantilla no contiene </body>')
     html=html.replace('</body>',extra+'</body>',1)
-    validar_html(html)
+    validar_salida(html)
     SALIDA.parent.mkdir(parents=True,exist_ok=True); SALIDA.write_text(html,encoding='utf-8'); print(f'OK {SALIDA} ({SALIDA.stat().st_size/1024:.1f} KB)')
 if __name__=='__main__': main()
