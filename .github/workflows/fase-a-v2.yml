@@ -67,19 +67,31 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          s=Path('build/plantilla.html').read_text(encoding='utf-8')
-          top=s.split('<header class="top">',1)[1].split('</header>',1)[0]
+          import re
+          tpl=Path('build/plantilla.html').read_text(encoding='utf-8')
+          app=Path('build/app.js').read_text(encoding='utf-8')
+          av=Path('build/averia.js').read_text(encoding='utf-8')
+          top=tpl.split('<header class="top">',1)[1].split('</header>',1)[0]
           assert top.count('<div class="brand">') == 1
           assert 'id="sessionIndicator"' in top
           assert 'id="menuBtn"' in top
-          for forbidden in ('sessionSelect','progressBtn','prevSession','nextSession','openMap'):
-              assert forbidden not in top, forbidden
-          map_part=s.split('id="mapDialog"',1)[1].split('</section></div>',1)[0]
+          assert len(re.findall(r'<button\b',top)) == 1, 'el encabezado debe tener un solo botón'
+          assert not re.search(r'id\s*=\s*["\'][^"\']*legacy',tpl,re.I), 'no se permiten ids legacy'
+          for ghost in ('legacyNav','progressBtn','prevSession','nextSession','openMap','progressBar'):
+              assert ghost not in tpl and ghost not in app, ghost
+          map_part=tpl.split('id="mapDialog"',1)[1].split('</section></div>',1)[0]
           assert 'id="sessionSelect"' in map_part
-          for item in ('menuProgress','menuLog','menuAverias','menuSearch','menuMap','menuSettings','menuCloseCourse'):
-              assert f'id="{item}"' in s, item
-          assert 'id="menuCloseCourse" type="button" hidden' in s
+          assert 'id="menuList"' in tpl
+          assert '__T:nav.anterior__' in app and '__T:nav.siguiente__' in app
+          assert "['log',3,T.menu.bitacora]" in tpl
+          assert "['averias',10,T.menu.averias]" in tpl
+          assert "['close-course',20,T.menu.cierre]" in tpl
+          assert 'sesion >= 6' in app
+          assert 'currentA() < 19' in av
           print('navigation_contract=ok')
+          print('legacy_id_hits=0')
+          print('header_button_count=1')
+          print('progressive_unlock_contract=ok')
           PY
       - name: Validar datos y build
         run: |
