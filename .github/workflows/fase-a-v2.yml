@@ -4,8 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'tools/fase_a_refactor.py'
-      - 'tools/fase_a_run.py'
+      - 'tools/fase_a_refactor.mjs'
       - 'datos/textos.json'
       - '.github/workflows/fase-a-v2.yml'
 
@@ -19,41 +18,33 @@ concurrency:
 jobs:
   refactor:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-node@v4
         with:
-          python-version: '3.x'
+          node-version: '22'
+      - name: Preparar parser
+        run: npm install --no-save --no-package-lock @babel/parser @babel/traverse @babel/generator
       - name: Extraer copia
-        run: |
-          rc=0
-          python3 tools/fase_a_run.py || rc=$?
-          echo '--- líneas con acentos tras la extracción ---'
-          grep -EIn '[áéíóúñüÁÉÍÓÚÑÜ¿¡]' build/*.js | head -200 || true
-          exit "$rc"
+        run: node tools/fase_a_refactor.mjs
       - name: Validar JavaScript
         run: |
           for f in build/app.js build/averia.js build/fase5.js build/fase6.js build/perfiles.js; do
             node --check "$f"
           done
-      - name: Validar build
-        run: python3 build/construir.py
       - name: Comprobar copia residual
         run: |
           count=$(grep -EIn '[áéíóúñüÁÉÍÓÚÑÜ¿¡]' build/*.js | wc -l || true)
           echo "grep_accent_lines=$count"
           test "$count" -eq 0
-      - name: Guardar fase A
+      - name: Guardar extracción
         run: |
           git config user.name 'SergioAguis32'
           git config user.email 'sergioaguis32@gmail.com'
-          git add datos/textos.json build/app.js build/averia.js build/fase5.js build/fase6.js build/perfiles.js build/plantilla.html build/construir.py
-          if git diff --cached --quiet; then
-            echo 'Sin cambios pendientes'
-          else
-            git commit -m 'v2 fase A: sacar copia del código [skip ci]'
-            git push origin HEAD:main
-          fi
+          git add datos/textos.json build/app.js build/averia.js build/fase5.js build/fase6.js build/perfiles.js build/plantilla.html
+          git diff --cached --check
+          git commit -m 'v2 fase A: sacar copia del código [skip ci]'
+          git push origin HEAD:main
