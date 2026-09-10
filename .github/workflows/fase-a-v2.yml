@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'tools/fase_a_refactor.py'
+      - 'tools/fase_a_run.py'
       - 'datos/textos.json'
       - '.github/workflows/fase-a-v2.yml'
 
@@ -27,7 +28,7 @@ jobs:
         with:
           python-version: '3.x'
       - name: Extraer copia
-        run: python3 tools/fase_a_refactor.py
+        run: python3 tools/fase_a_run.py
       - name: Validar JavaScript
         run: |
           for f in build/app.js build/averia.js build/fase5.js build/fase6.js build/perfiles.js; do
