@@ -1,0 +1,161 @@
+name: Aplicar fase D v2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fase-d-v2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Aplicar correcciones de C y entrada de D
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+
+          def one(src, old, new, label):
+              n=src.count(old)
+              if n != 1:
+                  raise SystemExit(f'{label}: esperaba 1 coincidencia y encontré {n}')
+              return src.replace(old,new,1)
+
+          # Copy: cierre de sesión 20 + título de la segunda pantalla de entrada.
+          p=Path('datos/textos.json')
+          data=json.loads(p.read_text(encoding='utf-8'))
+          data['desbloqueo']['cierre']={
+              'titulo':'Cerrar el curso',
+              'cuerpo':'Llegaste a la última sesión. Falta la parte que casi nadie hace: cerrar cuentas.\n\nAquí vas a decidir qué destruir, borrar los seis snapshots que llevan un mes cobrando, guardar fuera del servidor lo que vale la pena, y confirmar que dejaste de pagar.\n\nTerminar bien un laboratorio es parte de saber montarlo.'
+          }
+          data['bienvenida']['destino']='A dónde vas'
+          p.write_text(json.dumps(data,ensure_ascii=False,indent=1)+'\n',encoding='utf-8')
+
+          # App principal: cierre como desbloqueo real y estado de entrada persistente.
+          p=Path('build/app.js'); s=p.read_text(encoding='utf-8')
+          s=one(s,
+              "  const estadoBase = () => ({ version: 3, sesion: 1, bloque: 0, checkpoints: {}, quizVistos: {}, quizResultados: {}, desbloqueos: {}, servidorEn: null, costo: { mensual: '', inicio: '' }, updatedAt: null });",
+              "  const estadoBase = () => ({ version: 3, sesion: 1, bloque: 0, checkpoints: {}, quizVistos: {}, quizResultados: {}, desbloqueos: {}, entrada: { completa: false, paso: 0, nombre: '', so: '' }, servidorEn: null, costo: { mensual: '', inicio: '' }, updatedAt: null });",
+              'estado de entrada')
+          old_cargar="  function cargar() {try {let raw = localStorage.getItem(KEY);if (!raw) raw = localStorage.getItem(LEGACY);if (!raw) return estadoBase();const x = JSON.parse(raw);return { ...estadoBase(), ...x, version: 3, checkpoints: { ...(x.checkpoints || {}) }, quizVistos: { ...(x.quizVistos || {}) }, quizResultados: { ...(x.quizResultados || {}) }, desbloqueos: { ...(x.desbloqueos || {}) }, costo: { ...estadoBase().costo, ...(x.costo || {}) } };} catch (e) {storageOK = false;return estadoBase();}}"
+          new_cargar="  function cargar() {try {let raw = localStorage.getItem(KEY);if (!raw) raw = localStorage.getItem(LEGACY);if (!raw) return estadoBase();const x = JSON.parse(raw),base = estadoBase(),entrada = x.entrada && typeof x.entrada === 'object' && !Array.isArray(x.entrada) ? { ...base.entrada, ...x.entrada } : { ...base.entrada, completa: true };return { ...base, ...x, version: 3, checkpoints: { ...(x.checkpoints || {}) }, quizVistos: { ...(x.quizVistos || {}) }, quizResultados: { ...(x.quizResultados || {}) }, desbloqueos: { ...(x.desbloqueos || {}) }, entrada, costo: { ...base.costo, ...(x.costo || {}) } };} catch (e) {storageOK = false;return estadoBase();}}"
+          s=one(s,old_cargar,new_cargar,'migración de entrada')
+          s=one(s,
+              "  const DESBLOQUEOS = [['snapshots', 2], ['bitacora', 3], ['riel', 6], ['averias', 10]];",
+              "  const DESBLOQUEOS = [['snapshots', 2], ['bitacora', 3], ['riel', 6], ['averias', 10], ['cierre', 20]];",
+              'desbloqueo de cierre')
+          marker="  curso.sesiones.forEach((s) => {const o = document.createElement('option');o.value = s.num;o.textContent = `${String(s.num).padStart(2, '0')} · ${s.titulo}`;select.appendChild(o);});"
+          api="  window.cursoVpsGetEstado = () => estado;\n  window.cursoVpsSetEntrada = (entrada = {}, costo = null) => {estado.entrada = { ...estadoBase().entrada, ...(estado.entrada || {}), ...entrada };if (costo) estado.costo = { ...estadoBase().costo, ...(estado.costo || {}), ...costo };guardar();};\n"
+          s=one(s,marker,api+marker,'API de entrada')
+          greet="  function saludoHTML() {const nombre = String(estado.entrada?.nombre || '').trim();if (!nombre) return '';const h = new Date().getHours(),saludo = h < 12 ? textos.saludos.manana : h < 19 ? textos.saludos.tarde : textos.saludos.noche;return `<p class=\"progress-greeting\">${esc(textos.bienvenida.saludo.replace('{saludo}', saludo).replace('{nombre}', nombre))}</p>`;}\n"
+          s=one(s,"  function dashboardHTML() {",greet+"  function dashboardHTML() {",'saludo de progreso')
+          s=one(s,
+              "cambiosReales = cambiosHasta(realSesion);return `<div class=\"dash-grid\">",
+              "cambiosReales = cambiosHasta(realSesion);return `${saludoHTML()}<div class=\"dash-grid\">`,
+              'saludo en dashboard')
+          p.write_text(s,encoding='utf-8')
+
+          # El cronómetro pertenece al modo avería: aparece desde la sesión 10.
+          p=Path('build/averia.js'); s=p.read_text(encoding='utf-8')
+          s=one(s,'if (currentA() < 19) {','if (currentA() < 10) {','cronómetro desde averías')
+          p.write_text(s,encoding='utf-8')
+
+          # Exportación/importación y perfiles conservan la entrada guiada.
+          for name in ('build/fase6.js','build/perfiles.js'):
+              p=Path(name); s=p.read_text(encoding='utf-8')
+              needle="if (typeof x.desbloqueos?.[k] === 'boolean') desbloqueos[k] = x.desbloqueos[k];return { version: 3,"
+              repl="if (typeof x.desbloqueos?.[k] === 'boolean') desbloqueos[k] = x.desbloqueos[k];const er = x.entrada,entrada = er && typeof er === 'object' && !Array.isArray(er) ? { completa: Boolean(er.completa), paso: Math.max(0, Math.min(2, Math.trunc(Number(er.paso) || 0))), nombre: String(er.nombre || '').slice(0, 80), so: ['windows', 'mac', 'linux'].includes(er.so) ? er.so : '' } : { completa: true, paso: 0, nombre: '', so: '' };return { version: 3,"
+              s=one(s,needle,repl,f'entrada en {name}')
+              s=one(s,'quizResultados: qr, desbloqueos, servidorEn','quizResultados: qr, desbloqueos, entrada, servidorEn',f'retorno entrada en {name}')
+              p.write_text(s,encoding='utf-8')
+
+          # Módulo de entrada: tres pantallas, pensum/piezas y bifurcación de sesión 1.
+          Path('build/entrada.js').write_text(r'''(() => {
+            'use strict';
+            const cursoE = JSON.parse(document.getElementById('cursoData').textContent);
+            const textosE = JSON.parse(document.getElementById('textosData').textContent);
+            const getState = () => window.cursoVpsGetEstado?.() || {};
+            const setEntry = (entrada, costo = null) => window.cursoVpsSetEntrada?.(entrada, costo);
+            const escE = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+            const css = `.entry-flow{position:fixed;inset:0;z-index:40;background:var(--p);display:grid;place-items:center;padding:24px;overflow:auto}.entry-flow[hidden]{display:none}.entry-card{width:min(760px,100%);margin:auto}.entry-card h1{font-size:34px;margin-bottom:12px}.entry-sub{max-width:55ch;color:var(--m);line-height:1.55;margin-bottom:24px}.entry-step{font:12px var(--mono);color:var(--m);margin-bottom:10px}.entry-field{display:block;margin:18px 0}.entry-field>span{display:block;font-weight:650;margin-bottom:7px}.entry-field small{display:block;color:var(--m);margin-top:6px;line-height:1.45}.entry-field input,.entry-field select{width:100%;border:1px solid var(--l);background:var(--p);padding:11px}.entry-actions{display:flex;justify-content:flex-end;margin-top:24px}.entry-weeks{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0 24px}.entry-week{border:1px solid var(--l);padding:14px}.entry-week small{color:var(--m)}.entry-week strong{display:block;margin:6px 0}.entry-pieces{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.entry-piece{border:1px solid var(--l);background:var(--p);padding:9px;text-align:left;cursor:pointer}.entry-piece[aria-pressed=true]{border-color:var(--a);color:var(--a);font-weight:700}.entry-piece-detail{margin-top:12px;padding:14px;background:var(--p2);min-height:84px}.entry-piece-detail strong,.entry-piece-detail small,.entry-piece-detail code{display:block}.entry-piece-detail small{color:var(--m);margin:5px 0}.entry-piece-detail code{font:13px var(--mono);margin-top:8px}.progress-greeting{font-size:22px;font-weight:750;margin:0 0 18px}@media(max-width:760px){.entry-flow{padding:18px}.entry-card h1{font-size:29px}.entry-weeks{grid-template-columns:1fr}.entry-pieces{grid-template-columns:1fr 1fr}}`;
+            const style = document.createElement('style');style.textContent = css;document.head.appendChild(style);
+            const root = document.createElement('div');root.className = 'entry-flow';root.id = 'entryFlow';root.hidden = true;root.innerHTML = `<section class="entry-card" role="dialog" aria-modal="true" aria-labelledby="entryTitle"><div class="entry-step" id="entryStep"></div><h1 id="entryTitle"></h1><div id="entryBody"></div></section>`;document.body.appendChild(root);
+            let piece = null;
+            function entry() {const x = getState().entrada || {};return { completa: Boolean(x.completa), paso: Math.max(0, Math.min(2, Number(x.paso) || 0)), nombre: String(x.nombre || '').slice(0, 80), so: ['windows','mac','linux'].includes(x.so) ? x.so : '' };}
+            function paintStep(n) {document.getElementById('entryStep').textContent = `${n + 1}/3`;}
+            function who(e) {paintStep(0);document.getElementById('entryTitle').textContent = textosE.bienvenida.titulo;document.getElementById('entryBody').innerHTML = `<p class="entry-sub">${escE(textosE.bienvenida.subtitulo)}</p><label class="entry-field"><span>${escE(textosE.bienvenida.pedirNombre)}</span><input id="entryName" maxlength="80" autocomplete="name" value="${escE(e.nombre)}"><small>${escE(textosE.bienvenida.nombreAyuda)}</small></label><label class="entry-field"><span>${escE(textosE.bienvenida.pedirSO)}</span><select id="entryOS"><option value="">—</option><option value="windows" ${e.so === 'windows' ? 'selected' : ''}>${escE(textosE.bienvenida.opcionWindows)}</option><option value="mac" ${e.so === 'mac' ? 'selected' : ''}>${escE(textosE.bienvenida.opcionMac)}</option><option value="linux" ${e.so === 'linux' ? 'selected' : ''}>${escE(textosE.bienvenida.opcionLinux)}</option></select><small>${escE(textosE.bienvenida.soAyuda)}</small></label><div class="entry-actions"><button class="btn" id="entryNext" type="button">${escE(textosE.nav.siguiente)}</button></div>`;const name=document.getElementById('entryName'),os=document.getElementById('entryOS'),next=document.getElementById('entryNext');const valid=()=>next.disabled=!name.value.trim()||!os.value;name.oninput=valid;os.onchange=valid;next.onclick=()=>{const v={...e,nombre:name.value.trim().slice(0,80),so:os.value,paso:1};setEntry(v);render(v);};valid();setTimeout(()=>name.focus(),0);}
+            function destination(e) {paintStep(1);document.getElementById('entryTitle').textContent = textosE.bienvenida.destino;const weeks=(cursoE.semanas||[]).map((w)=>`<article class="entry-week"><small>${escE(textosE.extra.app['043'])} ${escE(w.num)} · ${(Number(w.num)-1)*5+1}–${Number(w.num)*5}</small><strong>${escE(w.titulo)}</strong></article>`).join('');const pieces=(cursoE.piezas||[]).map((p,i)=>`<button class="entry-piece" type="button" data-entry-piece="${i}" aria-pressed="false">${escE(p.nombre)}</button>`).join('');document.getElementById('entryBody').innerHTML = `<div class="entry-weeks">${weeks}</div><div class="entry-pieces">${pieces}</div><div class="entry-piece-detail" id="entryPieceDetail"></div><div class="entry-actions"><button class="btn" id="entryNext" type="button">${escE(textosE.nav.siguiente)}</button></div>`;const detail=document.getElementById('entryPieceDetail');document.querySelectorAll('[data-entry-piece]').forEach((b)=>b.onclick=()=>{const i=Number(b.dataset.entryPiece),p=cursoE.piezas?.[i];if(!p)return;piece=i;document.querySelectorAll('[data-entry-piece]').forEach((x)=>x.setAttribute('aria-pressed',String(x===b)));detail.innerHTML=`<strong>${escE(p.nombre)}</strong><span>${escE(p.hace)}</span><small>${escE(p.vive)}</small><code>${escE(p.comprobacion)}</code>`;});if(piece===null&&cursoE.piezas?.length) document.querySelector('[data-entry-piece="0"]')?.click();document.getElementById('entryNext').onclick=()=>{const v={...e,paso:2};setEntry(v);render(v);};}
+            function cost(e) {paintStep(2);document.getElementById('entryTitle').textContent = textosE.bienvenida.pedirCosto;const c=getState().costo||{};document.getElementById('entryBody').innerHTML = `<label class="entry-field"><span>${escE(textosE.bienvenida.pedirCosto)}</span><input id="entryMonthly" inputmode="decimal" placeholder="${escE(textosE.extra.app['032'])}" value="${escE(c.mensual||'')}"><small>${escE(textosE.bienvenida.costoAyuda)}</small></label><label class="entry-field"><span>${escE(textosE.extra.app['033'])}</span><input id="entryStart" type="date" value="${escE(c.inicio||'')}"></label><div class="entry-actions"><button class="btn" id="entryStartCourse" type="button">${escE(textosE.bienvenida.empezar)}</button></div>`;document.getElementById('entryStartCourse').onclick=()=>{const v={...e,paso:2,completa:true};setEntry(v,{mensual:document.getElementById('entryMonthly').value.trim(),inicio:document.getElementById('entryStart').value});root.hidden=true;document.body.classList.remove('entry-open');window.scrollTo(0,0);tailor();};}
+            function render(e=entry()) {root.hidden=false;document.body.classList.add('entry-open');if(e.paso===0)return who(e);if(e.paso===1)return destination(e);return cost(e);}
+            function maybeOpen() {const e=entry();if(!e.completa) render(e);else {root.hidden=true;document.body.classList.remove('entry-open');}}
+            function tailor() {const st=getState();if(Number(st.sesion)!==1||Number(st.bloque)!==1)return;const so=st.entrada?.so;if(!['windows','mac','linux'].includes(so))return;const content=document.querySelector('#reader .content');if(!content)return;const kids=[...content.children],p2=kids.findIndex((x)=>x.textContent.trim().startsWith('Paso 2')),idx={mac:kids.findIndex((x)=>x.textContent.includes('Mac')),linux:kids.findIndex((x)=>x.textContent.includes('Linux')),windows:kids.findIndex((x)=>x.textContent.includes('Windows'))};if(p2<0||Object.values(idx).some((x)=>x<0))return;const starts=[idx.mac,idx.linux,idx.windows],sel=idx[so],next=starts.filter((x)=>x>sel).sort((a,b)=>a-b)[0]??p2;for(let i=Math.min(...starts);i<p2;i++)kids[i].hidden=!(i>=sel&&i<next);}
+            function greet() {const body=document.getElementById('progressBody'),name=String(getState().entrada?.nombre||'').trim();if(!body||!name||body.querySelector('.progress-greeting'))return;const h=new Date().getHours(),g=h<12?textosE.saludos.manana:h<19?textosE.saludos.tarde:textosE.saludos.noche,p=document.createElement('p');p.className='progress-greeting';p.textContent=textosE.bienvenida.saludo.replace('{saludo}',g).replace('{nombre}',name);body.prepend(p);}
+            document.addEventListener('curso:session',()=>{maybeOpen();setTimeout(tailor,0);});document.addEventListener('curso:open-progress',()=>setTimeout(greet,0));const pb=document.getElementById('progressBody');if(pb)new MutationObserver(()=>{if(document.getElementById('progressDialog')?.classList.contains('open'))greet();}).observe(pb,{childList:true});maybeOpen();tailor();
+          })();
+          ''',encoding='utf-8')
+
+          # El builder incluye la entrada antes de los módulos secundarios.
+          p=Path('build/construir.py'); s=p.read_text(encoding='utf-8')
+          s=one(s,
+              "PLANTILLA=ROOT/'build'/'plantilla.html'; APP=ROOT/'build'/'app.js'; AVERIA=ROOT/'build'/'averia.js'; FASE5=ROOT/'build'/'fase5.js'; FASE6=ROOT/'build'/'fase6.js'; PERFILES=ROOT/'build'/'perfiles.js'; SALIDA=ROOT/'public'/'index.html'",
+              "PLANTILLA=ROOT/'build'/'plantilla.html'; APP=ROOT/'build'/'app.js'; ENTRADA=ROOT/'build'/'entrada.js'; AVERIA=ROOT/'build'/'averia.js'; FASE5=ROOT/'build'/'fase5.js'; FASE6=ROOT/'build'/'fase6.js'; PERFILES=ROOT/'build'/'perfiles.js'; SALIDA=ROOT/'public'/'index.html'",
+              'constante entrada')
+          s=one(s,'for p in (AVERIA,FASE5,FASE6,PERFILES)','for p in (ENTRADA,AVERIA,FASE5,FASE6,PERFILES)','orden de módulos')
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Validar fase D
+        run: |
+          for f in build/*.js; do node --check "$f"; done
+          python3 -m json.tool datos/textos.json >/dev/null
+          python3 -m py_compile build/construir.py
+          python3 build/construir.py
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,re
+          app=Path('build/app.js').read_text(encoding='utf-8')
+          av=Path('build/averia.js').read_text(encoding='utf-8')
+          ent=Path('build/entrada.js').read_text(encoding='utf-8')
+          out=Path('public/index.html').read_text(encoding='utf-8')
+          t=json.loads(Path('datos/textos.json').read_text(encoding='utf-8'))
+          assert t['desbloqueo']['cierre']['titulo']=='Cerrar el curso'
+          assert "['cierre', 20]" in app
+          assert 'currentA() < 10' in av and 'currentA() < 19' not in av
+          m=re.search(r'const DESBLOQUEOS\s*=\s*\[(.*?)\];',app,re.S); assert m
+          keys=re.findall(r"\['([^']+)'\s*,\s*\d+\]",m.group(1))
+          assert all(isinstance(t['desbloqueo'].get(k),dict) for k in keys)
+          assert "entrada: { completa: false, paso: 0, nombre: '', so: '' }" in app
+          assert "data['bienvenida']" not in ent
+          assert "cursoE.semanas" in ent and "cursoE.piezas" in ent
+          assert "Number(st.sesion)!==1||Number(st.bloque)!==1" in ent
+          assert "window.cursoVpsSetEntrada" in app
+          assert "for p in (ENTRADA,AVERIA,FASE5,FASE6,PERFILES)" in Path('build/construir.py').read_text(encoding='utf-8')
+          assert '__T:' not in out and '__TEXTOS_JSON__' not in out
+          print('unlock_copy_contract=ok')
+          print('timer_with_averias=ok')
+          print('entry_three_steps=ok')
+          print('entry_state_persisted=ok')
+          print('session1_os_branch=ok')
+          print('FASE_D_STATIC_OK')
+          PY
+          count=$(grep -EIn '[áéíóúñüÁÉÍÓÚÑÜ¿¡]' build/*.js | wc -l || true)
+          echo "grep_accent_lines=$count"
+          test "$count" -eq 0
+      - name: Publicar fase D
+        run: |
+          git config user.name 'SergioAguis32'
+          git config user.email 'sergioaguis32@gmail.com'
+          git add build/app.js build/averia.js build/entrada.js build/fase6.js build/perfiles.js build/construir.py datos/textos.json
+          git diff --cached --check
+          git commit -m 'v2 fase D: entrada guiada y desbloqueos coherentes'
+          git push origin HEAD:main
