@@ -1,0 +1,15 @@
+{
+ "_nota": "Qué le agrega cada sesión a la MÁQUINA. Solo sesiones que cambian el estado del servidor. Alimenta el aviso de desincronización entre 'dónde vas' y 'dónde está tu servidor'.",
+ "2":  "el VPS mismo",
+ "3":  "tu usuario con sudo",
+ "4":  "las llaves SSH y el acceso endurecido",
+ "5":  "el firewall UFW",
+ "7":  "Nginx sirviendo HTTP",
+ "9":  "el servicio de systemd",
+ "10": "el proxy inverso",
+ "11": "HTTPS",
+ "12": "el repositorio Git",
+ "14": "Docker",
+ "15": "la app en contenedor",
+ "17": "el despliegue desde GitHub"
+}
