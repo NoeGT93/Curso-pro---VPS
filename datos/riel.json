@@ -1,0 +1,27 @@
+{
+ "_nota": "Las doce piezas en dos grupos. 'camino' va de afuera hacia adentro, igual que el método de diagnóstico del curso. 'acceso' son las piezas por las que pasás vos, no una visita.",
+ "camino": ["DNS","IP","Puerto","Firewall","TLS","HTTP/HTTPS","Proxy inverso","Proceso/servicio","Contenedor"],
+ "acceso": ["Terminal","SSH","VPS"],
+ "capaPorSesion": {
+  "1":  "Terminal",
+  "2":  "VPS",
+  "3":  "SSH",
+  "4":  "SSH",
+  "5":  "Firewall",
+  "6":  "DNS",
+  "7":  "HTTP/HTTPS",
+  "8":  "Puerto",
+  "9":  "Proceso/servicio",
+  "10": "Proxy inverso",
+  "11": "TLS",
+  "12": null,
+  "13": "Contenedor",
+  "14": "Contenedor",
+  "15": "Contenedor",
+  "16": null,
+  "17": null,
+  "18": "VPS",
+  "19": "*",
+  "20": "*"
+ }
+}
