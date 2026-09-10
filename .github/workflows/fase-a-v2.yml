@@ -63,7 +63,7 @@ jobs:
               sys.exit(1)
           print('forbidden_text_hits=0')
           PY
-      - name: Validar navegación
+      - name: Validar navegación y desbloqueos
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -90,17 +90,36 @@ jobs:
           assert "['averias',10,T.menu.averias]" in tpl
           assert "['close-course',20,T.menu.cierre]" in tpl
           assert 'sesion >= 6' in app
-          assert 'currentA() < 19' in av or 'currentA() < 10' in av
+          assert 'currentA() < 10' in av, 'el cronómetro debe pertenecer a averías desde sesión 10'
+          assert 'currentA() < 19' not in av, 'la sesión 19 no controla el montaje del cronómetro'
           m=re.search(r'const DESBLOQUEOS\s*=\s*\[(.*?)\];',app,re.S)
           assert m, 'falta DESBLOQUEOS'
           claves=re.findall(r"\['([^']+)'\s*,\s*\d+\]",m.group(1))
           faltan=[k for k in claves if not isinstance(textos.get('desbloqueo',{}).get(k),dict)]
           assert not faltan, f'desbloqueos sin copia: {faltan}'
+          assert "['cierre', 20]" in app
           print('navigation_contract=ok')
           print('legacy_id_hits=0')
           print('header_button_count=1')
           print('unlock_copy_contract=ok')
+          print('timer_with_averias=ok')
           print('progressive_unlock_contract=ok')
+          PY
+      - name: Validar entrada
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          app=Path('build/app.js').read_text(encoding='utf-8')
+          entrada=Path('build/entrada.js').read_text(encoding='utf-8')
+          builder=Path('build/construir.py').read_text(encoding='utf-8')
+          assert "entrada: { completa: false, paso: 0, nombre: '', so: '' }" in app
+          assert 'window.cursoVpsSetEntrada' in app
+          assert 'cursoE.semanas' in entrada and 'cursoE.piezas' in entrada
+          assert "Number(st.sesion)!==1||Number(st.bloque)!==1" in entrada
+          assert 'for p in (ENTRADA,AVERIA,FASE5,FASE6,PERFILES)' in builder
+          print('entry_three_steps=ok')
+          print('entry_state_persisted=ok')
+          print('session1_os_branch=ok')
           PY
       - name: Validar datos y build
         run: |
