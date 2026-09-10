@@ -9,16 +9,9 @@ on:
       - 'build/construir.py'
       - 'datos/textos.json'
       - '.github/workflows/fase-a-v2.yml'
-  pull_request:
-    paths:
-      - 'build/*.js'
-      - 'build/plantilla.html'
-      - 'build/construir.py'
-      - 'datos/textos.json'
-      - '.github/workflows/fase-a-v2.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verificar:
@@ -29,17 +22,31 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Normalizar plantilla
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('build/plantilla.html')
+          s=p.read_text(encoding='utf-8')
+          cambios={
+            '<title>__T:nav.curso__ absoluto</title>':'<title>__T:nav.curso__</title>',
+            'aria-label="__T:extra.perfiles.019__ pantalla de regreso"':'aria-label="__T:menu.progreso__"',
+            'aria-label="__T:extra.app.029__ anterior"':'aria-label="__T:nav.anterior__"',
+            'aria-label="__T:extra.app.029__ siguiente"':'aria-label="__T:nav.siguiente__"',
+          }
+          for viejo,nuevo in cambios.items(): s=s.replace(viejo,nuevo)
+          p.write_text(s,encoding='utf-8')
+          PY
       - name: Validar JavaScript
         run: |
-          for f in build/app.js build/averia.js build/fase5.js build/fase6.js build/perfiles.js; do
-            node --check "$f"
-          done
+          for f in build/app.js build/averia.js build/fase5.js build/fase6.js build/perfiles.js; do node --check "$f"; done
       - name: Comprobar copia residual
         run: |
           count=$(grep -EIn '[áéíóúñüÁÉÍÓÚÑÜ¿¡]' build/*.js | wc -l || true)
           echo "grep_accent_lines=$count"
           test "$count" -eq 0
-          ! grep -EIn 'Regreso|Tu regreso|Fase final|Bitácora y recuperación|Autocorrector|Modo Avería' build/*.js
+          ! grep -EIn 'Regreso|Tu regreso|Fase final|Bitácora y recuperación|Autocorrector|Modo Avería' build/*.js build/plantilla.html
+          ! grep -EIn '__T:[A-Za-z0-9_.-]+__[[:space:]]+(absoluto|pantalla|anterior|siguiente)' build/plantilla.html
       - name: Validar datos y build
         run: |
           python3 -m json.tool datos/textos.json >/dev/null
@@ -48,3 +55,14 @@ jobs:
           test -s public/index.html
           ! grep -q '__T:' public/index.html
           ! grep -q '__TEXTOS_JSON__' public/index.html
+      - name: Guardar plantilla si cambió
+        run: |
+          git config user.name 'SergioAguis32'
+          git config user.email 'sergioaguis32@gmail.com'
+          git add build/plantilla.html
+          if git diff --cached --quiet; then
+            echo 'Plantilla ya normalizada'
+          else
+            git commit -m 'v2 fase A: eliminar copia residual de plantilla [skip ci]'
+            git push origin HEAD:main
+          fi
