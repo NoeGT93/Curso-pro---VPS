@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 ROOT=Path(__file__).resolve().parent.parent
-PLANTILLA=ROOT/'build'/'plantilla.html'; APP=ROOT/'build'/'app.js'; AVERIA=ROOT/'build'/'averia.js'; SALIDA=ROOT/'public'/'index.html'
+PLANTILLA=ROOT/'build'/'plantilla.html'; APP=ROOT/'build'/'app.js'; AVERIA=ROOT/'build'/'averia.js'; FASE5=ROOT/'build'/'fase5.js'; SALIDA=ROOT/'public'/'index.html'
 CURSO=ROOT/'datos'/'curso.json'; PARTES=ROOT/'datos'/'curso_partes'
 def compactar(x): return json.dumps(x,ensure_ascii=False,separators=(',',':')).replace('</','<\\/')
 def archivo(p): return compactar(json.loads(p.read_text(encoding='utf-8')))
@@ -25,7 +25,7 @@ def main():
     for k,v in rep.items():
         if k not in html: raise SystemExit(f'Falta marcador {k}')
         html=html.replace(k,v)
-    extra='<script>'+js(AVERIA)+'</script>'
+    extra='<script>'+js(AVERIA)+'</script><script>'+js(FASE5)+'</script>'
     if '</body>' not in html: raise SystemExit('La plantilla no contiene </body>')
     html=html.replace('</body>',extra+'</body>',1)
     SALIDA.parent.mkdir(parents=True,exist_ok=True); SALIDA.write_text(html,encoding='utf-8'); print(f'OK {SALIDA} ({SALIDA.stat().st_size/1024:.1f} KB)')
