@@ -1,0 +1,43 @@
+name: Verificar producción
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verificar-produccion.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  curl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Comprobar dominio servido
+        run: |
+          ok=0
+          for i in $(seq 1 18); do
+            curl -fsS --max-time 15 https://curso-pro-vps.vercel.app/ -o /tmp/live.html || true
+            old=$(grep -c 'Tu regreso' /tmp/live.html 2>/dev/null || true)
+            menu=$(grep -c 'id="menuBtn"' /tmp/live.html 2>/dev/null || true)
+            bytes=$(wc -c < /tmp/live.html 2>/dev/null || echo 0)
+            echo "intento=$i bytes=$bytes tu_regreso_count=$old menu_button_count=$menu"
+            if [ "$old" -eq 0 ] && [ "$menu" -ge 1 ]; then ok=1; break; fi
+            sleep 5
+          done
+          echo '--- comprobación pedida ---'
+          echo -n 'curl -s https://curso-pro-vps.vercel.app/ | grep -c "Tu regreso" => '
+          grep -c 'Tu regreso' /tmp/live.html || true
+          test "$ok" -eq 1
+      - name: Retirar comprobación temporal
+        run: |
+          rm .github/workflows/verificar-produccion.yml
+          git config user.name 'SergioAguis32'
+          git config user.email 'sergioaguis32@gmail.com'
+          git add .github/workflows/verificar-produccion.yml
+          git commit -m 'chore: retirar comprobación temporal de producción [skip ci]'
+          git push origin HEAD:main
