@@ -1,1 +1,0 @@
-This directory contains the generated static output. Do not edit index.html manually.
