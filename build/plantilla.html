@@ -13,27 +13,63 @@
 .snapshot{display:flex;justify-content:space-between;gap:16px;align-items:center;border-left:3px solid var(--w);background:var(--p2);padding:13px 15px;margin:26px 0}.snapshot strong{display:block}.snapshot span{font-size:13px;color:var(--m)}.extras{border-top:1px solid var(--l);margin-top:28px;padding-top:20px}.extras aside{background:var(--p2);padding:16px 18px;margin:12px 0;line-height:1.6}.extras h3{margin:0 0 9px}.block-nav{display:flex;justify-content:space-between;border-top:1px solid var(--l);margin-top:32px;padding-top:18px}.dialog{position:fixed;inset:0;z-index:50;display:none}.dialog.open{display:block}.backdrop{position:absolute;inset:0;background:#0007}.panel{position:absolute;right:0;top:0;width:min(560px,92vw);height:100%;overflow:auto;background:var(--p);border-left:1px solid var(--l);padding:28px}.panel.left{left:0;right:auto;width:min(330px,90vw)}.panel.dashboard{width:min(700px,94vw)}.panel h2{font-size:27px;margin:12px 0 24px}.panel h3{font-size:17px;margin:0 0 12px}.close{float:right}.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--l);border:1px solid var(--l)}.metric{padding:15px;background:var(--p)}.metric strong{display:block;font-size:22px}.metric span{font-size:14px;color:var(--m)}.sync-card{padding:16px;margin:20px 0;border-left:4px solid var(--m);background:var(--p2)}.sync-card.ok{border-color:var(--ok)}.sync-card.warn{border-color:var(--w)}.sync-card.ahead{border-color:var(--a)}.sync-card p{margin:.45em 0}.sync-card small{color:var(--m)}.return-section{border-top:1px solid var(--l);padding-top:18px;margin-top:20px}.machine-list{list-style:none;padding:0;margin:0}.machine-list li{display:grid;grid-template-columns:44px 1fr;gap:8px;padding:8px 0;border-bottom:1px solid var(--l);font-size:14px}.machine-list li span{font:12px var(--mono);color:var(--m)}.cost-form{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cost-form label{font-size:12px;color:var(--m)}.cost-form input{display:block;width:100%;border:1px solid var(--l);background:var(--p);padding:9px 10px;margin-top:5px}.cost-estimate{background:var(--p2);padding:13px 14px;margin:12px 0 7px;line-height:1.45}.danger{margin-top:26px;border-color:var(--bad);color:var(--bad)}.warn{margin:0;padding:8px 16px;background:var(--w);color:white;font-size:13px}.mobile-map{display:none}
 @media(max-width:760px){.brand,.meta{display:none}.top{padding:0 9px;gap:7px}.select{max-width:130px}.layout{display:block}.rail{display:none}.mobile-map{display:inline-block}.reader{padding:27px 20px 55px}h1{font-size:25px}.snapshot{align-items:flex-start;flex-direction:column}.dash-grid,.cost-form{grid-template-columns:1fr}.quiz-summary{flex-direction:column}.quiz-status{width:100%;margin-left:0}.panel{padding:22px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+
+.session-indicator{margin-left:auto;font-size:13px;color:var(--m);white-space:nowrap}.menu-trigger{min-width:42px;font-size:20px;line-height:1}.menu-list{display:grid;gap:0;margin-top:22px}.menu-action{width:100%;border:0;border-bottom:1px solid var(--l);background:transparent;color:inherit;text-align:left;padding:13px 4px;cursor:pointer;font:inherit}.menu-action:hover{background:var(--p2)}.map-session{padding:10px 0 18px;border-bottom:1px solid var(--l);margin-bottom:14px}.map-session .select{width:100%;max-width:none}#legacyNav[hidden]{display:none!important}@media(max-width:760px){.top .brand{display:block}.session-indicator{font-size:12px}.menu-panel{width:min(360px,92vw)}}
 </style>
 </head>
 <body>
 <div id="storageWarn" class="warn" hidden>__T:extra.plantilla.002__</div>
 <header class="top">
-  <button class="btn mobile-map" id="openMap">__T:extra.plantilla.003__</button>
-  <div class="brand">__T:nav.curso__</div><div class="meta" id="weekMeta"></div><div class="spacer"></div>
-  <button class="btn" id="progressBtn" aria-label="__T:menu.progreso__">__T:extra.plantilla.001__</button>
-  <button class="btn" id="prevSession" aria-label="__T:nav.anterior__">←</button>
-  <select class="select" id="sessionSelect" aria-label="__T:extra.app.029__"></select>
-  <button class="btn" id="nextSession" aria-label="__T:nav.siguiente__">→</button>
-  <div class="bar"><span id="progressBar"></span></div>
+  <div class="brand">__T:nav.curso__</div>
+  <div class="session-indicator" id="sessionIndicator" aria-live="polite"></div>
+  <button class="btn menu-trigger" id="menuBtn" type="button" aria-label="__T:nav.menu__" aria-controls="menuDialog" aria-expanded="false">☰</button>
 </header>
+<div id="legacyNav" hidden>
+  <div id="weekMeta"></div>
+  <button id="openMap" type="button">__T:menu.mapa__</button>
+  <button id="progressBtn" type="button">__T:menu.progreso__</button>
+  <button id="prevSession" type="button">←</button>
+  <button id="nextSession" type="button">→</button>
+  <div><span id="progressBar"></span></div>
+</div>
 <div class="layout"><aside class="rail" id="rail"></aside><main><article class="reader" id="reader"></article></main></div>
 <div class="dialog" id="conceptDialog" aria-hidden="true"><div class="backdrop" data-close="conceptDialog"></div><section class="panel" role="dialog" aria-modal="true"><button class="btn close" data-close="conceptDialog">__T:nav.cerrar__</button><div class="eyebrow">__T:extra.plantilla.004__</div><h2 id="conceptTitle"></h2><div class="content" id="conceptBody"></div></section></div>
-<div class="dialog" id="mapDialog" aria-hidden="true"><div class="backdrop" data-close="mapDialog"></div><section class="panel left" role="dialog" aria-modal="true"><button class="btn close" data-close="mapDialog">__T:nav.cerrar__</button><div class="eyebrow">__T:menu.mapa__</div><div id="mobileRail"></div></section></div>
+<div class="dialog" id="mapDialog" aria-hidden="true"><div class="backdrop" data-close="mapDialog"></div><section class="panel left" role="dialog" aria-modal="true"><button class="btn close" data-close="mapDialog">__T:nav.cerrar__</button><div class="eyebrow">__T:menu.mapa__</div><div class="map-session"><select class="select" id="sessionSelect" aria-label="__T:extra.app.029__"></select></div><div id="mobileRail"></div></section></div>
 <div class="dialog" id="progressDialog" aria-hidden="true"><div class="backdrop" data-close="progressDialog"></div><section class="panel dashboard" role="dialog" aria-modal="true" aria-labelledby="progressTitle"><button class="btn close" data-close="progressDialog">__T:nav.cerrar__</button><div class="eyebrow">__T:progreso.subtitulo__</div><h2 id="progressTitle">__T:progreso.titulo__</h2><div id="progressBody"></div><button class="btn danger" id="resetProgress">__T:extra.plantilla.005__</button></section></div>
+<div class="dialog" id="menuDialog" aria-hidden="true"><div class="backdrop" data-menu-close></div><section class="panel menu-panel" role="dialog" aria-modal="true" aria-labelledby="menuTitle"><button class="btn close" data-menu-close>__T:nav.cerrar__</button><div class="eyebrow" id="menuTitle">__T:nav.menu__</div><nav class="menu-list" aria-label="__T:nav.menu__"><button class="menu-action" id="menuProgress" type="button">__T:menu.progreso__</button><button class="menu-action" id="menuLog" type="button">__T:menu.bitacora__</button><button class="menu-action" id="menuAverias" type="button">__T:menu.averias__</button><button class="menu-action" id="menuSearch" type="button">__T:menu.buscar__</button><button class="menu-action" id="menuMap" type="button">__T:menu.mapa__</button><button class="menu-action" id="menuSettings" type="button">__T:menu.ajustes__</button><button class="menu-action" id="menuCloseCourse" type="button" hidden>__T:menu.cierre__</button></nav></section></div>
+<div class="dialog" id="settingsDialog" aria-hidden="true"><div class="backdrop" data-settings-close></div><section class="panel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle"><button class="btn close" data-settings-close>__T:nav.cerrar__</button><div class="eyebrow" id="settingsTitle">__T:ajustes.titulo__</div><div class="menu-list"><button class="menu-action" id="settingsProfiles" type="button">__T:ajustes.perfiles__</button></div></section></div>
 <script type="application/json" id="textosData">__TEXTOS_JSON__</script>
 <script type="application/json" id="cursoData">__CURSO_JSON__</script>
 <script type="application/json" id="reglasData">__REGLAS_JSON__</script>
 <script type="application/json" id="instalaData">__INSTALA_JSON__</script>
 <script type="application/json" id="rielData">__RIEL_JSON__</script>
 <script>__APP_JS__</script>
+<script>
+(()=>{
+'use strict';
+const T=JSON.parse(document.getElementById('textosData').textContent);
+const by=id=>document.getElementById(id);
+const sel=by('sessionSelect'),reader=by('reader'),menu=by('menuDialog'),settings=by('settingsDialog'),menuBtn=by('menuBtn');
+const open=d=>{d.classList.add('open');d.setAttribute('aria-hidden','false')};
+const close=d=>{d.classList.remove('open');d.setAttribute('aria-hidden','true')};
+const closeMenu=()=>{close(menu);menuBtn.setAttribute('aria-expanded','false')};
+const paint=()=>{const n=String(Number(sel?.value)||1);by('sessionIndicator').textContent=T.nav.sesionDe.replace('{n}',n);by('menuCloseCourse').hidden=n!=='20'};
+const target=id=>{closeMenu();setTimeout(()=>by(id)?.click(),0)};
+menuBtn.addEventListener('click',()=>{open(menu);menuBtn.setAttribute('aria-expanded','true')});
+menu.querySelectorAll('[data-menu-close]').forEach(x=>x.addEventListener('click',closeMenu));
+settings.querySelectorAll('[data-settings-close]').forEach(x=>x.addEventListener('click',()=>close(settings)));
+by('menuProgress').onclick=()=>target('progressBtn');
+by('menuLog').onclick=()=>target('workBtn');
+by('menuAverias').onclick=()=>target('averiaBtn');
+by('menuSearch').onclick=()=>{closeMenu();setTimeout(()=>{by('averiaBtn')?.click();setTimeout(()=>document.querySelector('[data-av-tab="search"]')?.click(),0)},0)};
+by('menuMap').onclick=()=>target('openMap');
+by('menuSettings').onclick=()=>{closeMenu();open(settings)};
+by('settingsProfiles').onclick=()=>{close(settings);setTimeout(()=>by('profileBtn')?.click(),0)};
+by('menuCloseCourse').onclick=()=>target('finalBtn');
+sel?.addEventListener('change',paint);
+if(reader)new MutationObserver(paint).observe(reader,{childList:true,subtree:false});
+new MutationObserver(()=>{if(!menu.classList.contains('open'))menuBtn.setAttribute('aria-expanded','false')}).observe(menu,{attributes:true,attributeFilter:['class']});
+paint();
+})();
+</script>
 </body></html>
