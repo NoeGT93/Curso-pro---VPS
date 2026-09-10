@@ -19,20 +19,29 @@ jobs:
           fetch-depth: 0
       - name: Comprobar dominio servido
         run: |
-          ok=0
-          for i in $(seq 1 18); do
-            curl -fsS --max-time 15 https://curso-pro-vps.vercel.app/ -o /tmp/live.html || true
-            old=$(grep -c 'Tu regreso' /tmp/live.html 2>/dev/null || true)
-            menu=$(grep -c 'id="menuBtn"' /tmp/live.html 2>/dev/null || true)
-            bytes=$(wc -c < /tmp/live.html 2>/dev/null || echo 0)
-            echo "intento=$i bytes=$bytes tu_regreso_count=$old menu_button_count=$menu"
-            if [ "$old" -eq 0 ] && [ "$menu" -ge 1 ]; then ok=1; break; fi
-            sleep 5
-          done
-          echo '--- comprobación pedida ---'
+          curl -fsS --max-time 20 https://curso-pro-vps.vercel.app/ -o /tmp/live.html
           echo -n 'curl -s https://curso-pro-vps.vercel.app/ | grep -c "Tu regreso" => '
           grep -c 'Tu regreso' /tmp/live.html || true
-          test "$ok" -eq 1
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          s=Path('/tmp/live.html').read_text(encoding='utf-8')
+          m=re.search(r'<script type="application/json" id="textosData">([\s\S]*?)</script>',s)
+          assert m, 'No encontré textosData en producción'
+          outside=s[:m.start()]+s[m.end():]
+          raw=s.count('Tu regreso')
+          metadata=m.group(1).count('Tu regreso')
+          live=outside.count('Tu regreso')
+          menu=s.count('id="menuBtn"')
+          print(f'bytes={len(s.encode("utf-8"))}')
+          print(f'tu_regreso_raw={raw}')
+          print(f'tu_regreso_en_textosData={metadata}')
+          print(f'tu_regreso_fuera_de_textosData={live}')
+          print(f'menu_button_count={menu}')
+          assert raw == metadata
+          assert live == 0
+          assert menu >= 1
+          PY
       - name: Retirar comprobación temporal
         run: |
           rm .github/workflows/verificar-produccion.yml
