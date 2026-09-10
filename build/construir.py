@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parent.parent
-PLANTILLA=ROOT/'build'/'plantilla.html'; APP=ROOT/'build'/'app.js'; AVERIA=ROOT/'build'/'averia.js'; FASE5=ROOT/'build'/'fase5.js'; FASE6=ROOT/'build'/'fase6.js'; PERFILES=ROOT/'build'/'perfiles.js'; SALIDA=ROOT/'public'/'index.html'
+PLANTILLA=ROOT/'build'/'plantilla.html'; APP=ROOT/'build'/'app.js'; ENTRADA=ROOT/'build'/'entrada.js'; AVERIA=ROOT/'build'/'averia.js'; FASE5=ROOT/'build'/'fase5.js'; FASE6=ROOT/'build'/'fase6.js'; PERFILES=ROOT/'build'/'perfiles.js'; SALIDA=ROOT/'public'/'index.html'
 CURSO=ROOT/'datos'/'curso.json'; PARTES=ROOT/'datos'/'curso_partes'; TEXTOS=ROOT/'datos'/'textos.json'
 RE_TEXTO=re.compile(r'__T:([A-Za-z0-9_.-]+)__')
 
@@ -75,7 +75,7 @@ def main():
     for k,v in rep.items():
         if k not in html: raise SystemExit(f'Falta marcador {k}')
         html=html.replace(k,v)
-    extra=''.join('<script>'+js(p,textos)+'</script>' for p in (AVERIA,FASE5,FASE6,PERFILES))
+    extra=''.join('<script>'+js(p,textos)+'</script>' for p in (ENTRADA,AVERIA,FASE5,FASE6,PERFILES))
     if '</body>' not in html: raise SystemExit('La plantilla no contiene </body>')
     html=html.replace('</body>',extra+'</body>',1)
     SALIDA.parent.mkdir(parents=True,exist_ok=True)

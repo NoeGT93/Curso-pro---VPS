@@ -74,7 +74,8 @@
   "pedirCosto": "¿Cuánto te cuesta el VPS al mes?",
   "costoAyuda": "Si todavía no lo comprás, dejalo en blanco y lo llenás en la sesión 2.",
   "empezar": "Empezar",
-  "saludo": "{saludo}, {nombre}"
+  "saludo": "{saludo}, {nombre}",
+  "destino": "A dónde vas"
  },
  "saludos": {
   "manana": "Buenos días",
@@ -99,6 +100,10 @@
   "averias": {
    "titulo": "Practicar averías",
    "cuerpo": "Ya viste tu primer 502. Ahora podés practicar los otros once.\n\nSale un síntoma y vos decís en qué capa está, cómo lo comprobás y cómo se arregla. Las que fallés vuelven a salir a los pocos días.\n\nAquí sí hay cronómetro, porque en una caída real los minutos cuestan."
+  },
+  "cierre": {
+   "titulo": "Cerrar el curso",
+   "cuerpo": "Llegaste a la última sesión. Falta la parte que casi nadie hace: cerrar cuentas.\n\nAquí vas a decidir qué destruir, borrar los seis snapshots que llevan un mes cobrando, guardar fuera del servidor lo que vale la pena, y confirmar que dejaste de pagar.\n\nTerminar bien un laboratorio es parte de saber montarlo."
   }
  },
  "progreso": {
