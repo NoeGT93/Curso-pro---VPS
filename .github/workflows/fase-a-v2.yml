@@ -6,6 +6,7 @@ on:
     paths:
       - 'tools/fase_a_refactor.mjs'
       - 'datos/textos.json'
+      - 'build/construir.py'
       - '.github/workflows/fase-a-v2.yml'
 
 permissions:
@@ -32,9 +33,6 @@ jobs:
         run: |
           rc=0
           node tools/fase_a_refactor.mjs || rc=$?
-          # El auditor semántico puede confundir los nombres generados de los
-          # archivos curso-vps-*.md con copia de interfaz. Solo se tolera rc=2;
-          # los controles duros siguientes siguen siendo obligatorios.
           test "$rc" -eq 0 -o "$rc" -eq 2
       - name: Validar JavaScript
         run: |
@@ -47,11 +45,22 @@ jobs:
           echo "grep_accent_lines=$count"
           test "$count" -eq 0
           ! grep -EIn 'Regreso|Tu regreso|Fase final|Bitácora y recuperación|Autocorrector|Modo Avería' build/*.js
-      - name: Guardar extracción
+      - name: Validar build
+        run: |
+          python3 -m py_compile build/construir.py build/parse_curso.py
+          python3 build/construir.py
+          test -s public/index.html
+          ! grep -q '__T:' public/index.html
+          ! grep -q '__TEXTOS_JSON__' public/index.html
+      - name: Guardar extracción si cambia
         run: |
           git config user.name 'SergioAguis32'
           git config user.email 'sergioaguis32@gmail.com'
           git add datos/textos.json build/app.js build/averia.js build/fase5.js build/fase6.js build/perfiles.js build/plantilla.html
           git diff --cached --check
-          git commit -m 'v2 fase A: completar extracción de copia [skip ci]'
-          git push origin HEAD:main
+          if git diff --cached --quiet; then
+            echo 'Refactor idempotente: sin cambios nuevos'
+          else
+            git commit -m 'v2 fase A: completar extracción de copia [skip ci]'
+            git push origin HEAD:main
+          fi
