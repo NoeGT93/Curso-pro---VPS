@@ -1,1 +1,0 @@
-This auxiliary test will be removed after the deployment entry point is validated.
