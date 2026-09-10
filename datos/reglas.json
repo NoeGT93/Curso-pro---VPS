@@ -1,0 +1,142 @@
+{
+ "_nota": "Cada 'dice' describe lo que la app VE en la salida. Nunca dice correcto ni incorrecto. Un semáforo verde califica; describir lo que se ve enseña. Si nada coincide, la app se admite ignorante en vez de marcar mal.",
+
+ "5": {
+  "comando": "sudo ufw status verbose  /  sudo ss -lntp",
+  "reglas": [
+   { "busca": "Status:\\s*active",
+     "tipo": "hecho",
+     "dice": "Veo el firewall activo. Sin esa línea, UFW está instalado pero no está filtrando nada." },
+   { "busca": "Status:\\s*inactive",
+     "tipo": "roto",
+     "dice": "Veo el firewall inactivo. Las reglas que escribiste existen pero no se están aplicando." },
+   { "busca": "0\\.0\\.0\\.0:22|:22\\s",
+     "tipo": "info",
+     "dice": "Veo SSH escuchando en el 22. Eso tiene que seguir así: si desaparece, no podés volver a entrar." },
+   { "busca": "0\\.0\\.0\\.0:3000|\\*:3000",
+     "tipo": "cuidado",
+     "dice": "Veo el 3000 escuchando en 0.0.0.0. Eso está abierto a Internet. En la sesión 8 lo vas a querer en 127.0.0.1." },
+   { "busca": "127\\.0\\.0\\.1:3000",
+     "tipo": "hecho",
+     "dice": "Veo el 3000 solo en 127.0.0.1. Desde afuera no se alcanza. Es exactamente lo que buscabas." }
+  ],
+  "siNadaCoincide": "No reconozco esta salida. ¿La pegaste completa, con la línea de encabezado?"
+ },
+
+ "7": {
+  "comando": "systemctl status nginx  /  curl -I",
+  "reglas": [
+   { "busca": "Active:\\s*active \\(running\\)",
+     "tipo": "hecho",
+     "dice": "Veo Nginx corriendo. Esa es la línea que importa de todo el status." },
+   { "busca": "Active:\\s*(inactive|failed)",
+     "tipo": "roto",
+     "dice": "Veo Nginx caído. Las líneas de abajo del status suelen traer la razón." },
+   { "busca": "HTTP/1\\.1 200 OK",
+     "tipo": "hecho",
+     "dice": "Veo un 200. La petición llegó hasta el servidor y volvió con contenido." },
+   { "busca": "Connection refused",
+     "tipo": "roto",
+     "dice": "Veo conexión rechazada. Alguien contestó que no hay nadie en ese puerto. Eso es distinto de un timeout: significa que llegaste a la máquina." },
+   { "busca": "Server: nginx",
+     "tipo": "info",
+     "dice": "Veo que quien contesta es Nginx. Útil más adelante para saber si estás hablando con el proxy o con la app." }
+  ],
+  "siNadaCoincide": "No reconozco esta salida. Del status me sirve la línea Active; del curl, la primera línea."
+ },
+
+ "9": {
+  "comando": "systemctl status miapp",
+  "reglas": [
+   { "busca": "Active:\\s*active \\(running\\)",
+     "tipo": "hecho",
+     "dice": "Veo el servicio corriendo. Si además sobrevivió al restart, systemd ya lo está cuidando." },
+   { "busca": "Active:\\s*activating \\(auto-restart\\)",
+     "tipo": "roto",
+     "dice": "Veo el servicio reiniciándose en bucle. Arranca, se cae, systemd lo vuelve a levantar. El log tiene el error real: journalctl -u miapp -n 50." },
+   { "busca": "Active:\\s*failed",
+     "tipo": "roto",
+     "dice": "Veo el servicio fallido. Suele ser ruta mal escrita, permisos, o que el binario no está donde dice el archivo .service." },
+   { "busca": "Loaded:\\s*not-found",
+     "tipo": "roto",
+     "dice": "Veo que systemd no encuentra el archivo del servicio. Revisá el nombre y corré daemon-reload." }
+  ],
+  "siNadaCoincide": "No reconozco esta salida. La línea Active es la que me dice el estado."
+ },
+
+ "10": {
+  "comando": "sudo nginx -t  /  curl -I",
+  "reglas": [
+   { "busca": "syntax is ok[\\s\\S]*test is successful",
+     "tipo": "hecho",
+     "dice": "Veo las dos líneas. La configuración es válida y ya podés recargar." },
+   { "busca": "\\[emerg\\]",
+     "tipo": "roto",
+     "dice": "Veo un error de sintaxis. El mensaje trae el archivo y la línea exacta. Nginx no va a recargar hasta que lo arregles, y eso te está protegiendo de tumbar el sitio." },
+   { "busca": "502 Bad Gateway",
+     "tipo": "cuidado",
+     "dice": "Veo un 502. Nginx está vivo: recibió la visita e intentó pasarla atrás, y nadie contestó. El problema no está en DNS ni en el firewall, porque para llegar hasta aquí los dos ya funcionaron." },
+   { "busca": "504 Gateway Timeout",
+     "tipo": "cuidado",
+     "dice": "Veo un 504, que no es lo mismo que un 502. Aquí el backend sí contestó, pero tardó demasiado. Está vivo y lento o colgado, no muerto." }
+  ],
+  "siNadaCoincide": "No reconozco esta salida."
+ },
+
+ "11": {
+  "comando": "curl -I https://...",
+  "reglas": [
+   { "busca": "HTTP/2 200",
+     "tipo": "hecho",
+     "dice": "Veo HTTP/2 con 200. El certificado sirvió y la conexión cifrada quedó." },
+   { "busca": "certificate verify failed|SSL certificate problem",
+     "tipo": "roto",
+     "dice": "Veo que el certificado no valida. Suele ser que Certbot emitió para otro nombre, o que Nginx sigue apuntando al certificado viejo." },
+   { "busca": "Congratulations|successfully received certificate",
+     "tipo": "hecho",
+     "dice": "Veo que Certbot emitió el certificado. Anotá la fecha de vencimiento en tu bitácora." },
+   { "busca": "Timeout during connect|Could not reach|challenge failed",
+     "tipo": "roto",
+     "dice": "Veo que la validación no llegó. Let's Encrypt necesita alcanzar tu dominio por el puerto 80 desde afuera. Revisá DNS y firewall antes de repetir, porque hay límite de intentos." },
+   { "busca": "simulating renewal|dry run|renewal.*succe",
+     "tipo": "hecho",
+     "dice": "Veo el ensayo de renovación exitoso. Eso es lo que evita que el sitio se caiga en 90 días." }
+  ],
+  "siNadaCoincide": "No reconozco esta salida."
+ },
+
+ "14": {
+  "comando": "docker run hello-world  /  ss -lntp",
+  "reglas": [
+   { "busca": "Hello from Docker",
+     "tipo": "hecho",
+     "dice": "Veo que Docker corrió un contenedor y salió limpio. La instalación funciona." },
+   { "busca": "permission denied.*docker\\.sock",
+     "tipo": "cuidado",
+     "dice": "Veo un problema de permisos con el socket de Docker. Te agregaste al grupo pero la sesión todavía no lo sabe: cerrá y volvé a entrar por SSH." },
+   { "busca": "0\\.0\\.0\\.0:(3000|5432|3306|6379|8080)",
+     "tipo": "roto",
+     "dice": "Veo un puerto de aplicación atado a 0.0.0.0. Esta es la trampa de la sesión: Docker escribe sus propias reglas de iptables y se salta UFW. Ese puerto está abierto a Internet aunque el firewall diga que no. Atalo a 127.0.0.1 en el compose." },
+   { "busca": "127\\.0\\.0\\.1:(3000|5432|3306|6379|8080)",
+     "tipo": "hecho",
+     "dice": "Veo el puerto atado a 127.0.0.1. Solo el proxy lo alcanza, no Internet." }
+  ],
+  "siNadaCoincide": "No reconozco esta salida."
+ },
+
+ "15": {
+  "comando": "docker compose ps",
+  "reglas": [
+   { "busca": "\\b(Up|running)\\b",
+     "tipo": "hecho",
+     "dice": "Veo el servicio arriba. Si el dominio sigue devolviendo 200, cambiaste el motor sin que el resto del mapa se enterara. Ese es el punto de la sesión." },
+   { "busca": "Restarting|restarting",
+     "tipo": "roto",
+     "dice": "Veo el contenedor reiniciándose. Arranca y se muere. El log del contenedor tiene la razón: docker compose logs --tail 50." },
+   { "busca": "Exited \\(\\d+\\)",
+     "tipo": "roto",
+     "dice": "Veo el contenedor terminado. El número entre paréntesis es el código de salida y suele decir bastante: 0 salió bien, 1 error genérico, 137 lo mataron por memoria." }
+  ],
+  "siNadaCoincide": "No reconozco esta salida."
+ }
+}
