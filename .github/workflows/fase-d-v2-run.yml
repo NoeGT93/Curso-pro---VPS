@@ -1,0 +1,84 @@
+name: Ejecutar fase D v2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fase-d-v2-run.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  ejecutar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Preparar transformación
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          src=Path('.github/workflows/fase-d-v2.yml').read_text(encoding='utf-8')
+          a='      - name: Aplicar correcciones de C y entrada de D\n        run: |\n'
+          b='      - name: Validar fase D\n'
+          body=src.split(a,1)[1].split(b,1)[0]
+          script='\n'.join(line[10:] if line.startswith('          ') else line for line in body.splitlines())+'\n'
+          old='return `${saludoHTML()}<div class=\\\"dash-grid\\\">`,'
+          new='return `${saludoHTML()}<div class=\\\"dash-grid\\\">`",'
+          if old not in script:
+              raise SystemExit('No encuentro la cadena de dashboard a corregir')
+          script=script.replace(old,new,1)
+          Path('/tmp/fase-d.sh').write_text(script,encoding='utf-8')
+          PY
+          bash /tmp/fase-d.sh
+      - name: Validar fase D
+        run: |
+          for f in build/*.js; do node --check "$f"; done
+          python3 -m json.tool datos/textos.json >/dev/null
+          python3 -m py_compile build/construir.py build/parse_curso.py
+          python3 build/construir.py
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,re
+          app=Path('build/app.js').read_text(encoding='utf-8')
+          av=Path('build/averia.js').read_text(encoding='utf-8')
+          ent=Path('build/entrada.js').read_text(encoding='utf-8')
+          out=Path('public/index.html').read_text(encoding='utf-8')
+          t=json.loads(Path('datos/textos.json').read_text(encoding='utf-8'))
+          expected='Llegaste a la última sesión. Falta la parte que casi nadie hace: cerrar cuentas.\n\nAquí vas a decidir qué destruir, borrar los seis snapshots que llevan un mes cobrando, guardar fuera del servidor lo que vale la pena, y confirmar que dejaste de pagar.\n\nTerminar bien un laboratorio es parte de saber montarlo.'
+          assert t['desbloqueo']['cierre']=={'titulo':'Cerrar el curso','cuerpo':expected}
+          assert "['cierre', 20]" in app
+          assert 'currentA() < 10' in av and 'currentA() < 19' not in av
+          m=re.search(r'const DESBLOQUEOS\s*=\s*\[(.*?)\];',app,re.S); assert m
+          keys=re.findall(r"\['([^']+)'\s*,\s*\d+\]",m.group(1))
+          assert all(isinstance(t['desbloqueo'].get(k),dict) for k in keys)
+          assert "entrada: { completa: false, paso: 0, nombre: '', so: '' }" in app
+          assert 'cursoE.semanas' in ent and 'cursoE.piezas' in ent
+          assert "Number(st.sesion)!==1||Number(st.bloque)!==1" in ent
+          assert 'window.cursoVpsSetEntrada' in app
+          assert 'for p in (ENTRADA,AVERIA,FASE5,FASE6,PERFILES)' in Path('build/construir.py').read_text(encoding='utf-8')
+          assert '__T:' not in out and '__TEXTOS_JSON__' not in out
+          print('unlock_copy_contract=ok')
+          print('timer_with_averias=ok')
+          print('entry_three_steps=ok')
+          print('entry_state_persisted=ok')
+          print('session1_os_branch=ok')
+          print('FASE_D_STATIC_OK')
+          PY
+          count=$(grep -EIn '[áéíóúñüÁÉÍÓÚÑÜ¿¡]' build/*.js | wc -l || true)
+          echo "grep_accent_lines=$count"
+          test "$count" -eq 0
+      - name: Publicar fase D
+        run: |
+          git config user.name 'SergioAguis32'
+          git config user.email 'sergioaguis32@gmail.com'
+          git add build/app.js build/averia.js build/entrada.js build/fase6.js build/perfiles.js build/construir.py datos/textos.json
+          git diff --cached --check
+          git commit -m 'v2 fase D: entrada guiada y desbloqueos coherentes'
+          git push origin HEAD:main
