@@ -76,7 +76,9 @@ jobs:
           assert 'id="sessionIndicator"' in top
           assert 'id="menuBtn"' in top
           assert len(re.findall(r'<button\b',top)) == 1, 'el encabezado debe tener un solo botón'
-          assert not re.search(r'id\s*=\s*["\'][^"\']*legacy',tpl,re.I), 'no se permiten ids legacy'
+          fuentes=[tpl]+[p.read_text(encoding='utf-8') for p in sorted(Path('build').glob('*.js'))]
+          patron_id_legacy=re.compile(r'\bid\s*=\s*\\?["\'][^"\']*legacy',re.I)
+          assert not any(patron_id_legacy.search(x) for x in fuentes), 'no se permiten elementos con id legacy'
           for ghost in ('legacyNav','progressBtn','prevSession','nextSession','openMap','progressBar'):
               assert ghost not in tpl and ghost not in app, ghost
           map_part=tpl.split('id="mapDialog"',1)[1].split('</section></div>',1)[0]
