@@ -28,7 +28,12 @@ jobs:
         with:
           python-version: '3.x'
       - name: Extraer copia
-        run: python3 tools/fase_a_run.py
+        run: |
+          rc=0
+          python3 tools/fase_a_run.py || rc=$?
+          echo '--- líneas con acentos tras la extracción ---'
+          grep -EIn '[áéíóúñüÁÉÍÓÚÑÜ¿¡]' build/*.js | head -200 || true
+          exit "$rc"
       - name: Validar JavaScript
         run: |
           for f in build/app.js build/averia.js build/fase5.js build/fase6.js build/perfiles.js; do
