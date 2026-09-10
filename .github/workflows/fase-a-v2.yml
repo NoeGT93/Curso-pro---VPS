@@ -1,0 +1,48 @@
+name: Fase A v2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/fase_a_refactor.py'
+      - 'datos/textos.json'
+      - '.github/workflows/fase-a-v2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Extraer copia
+        run: python3 tools/fase_a_refactor.py
+      - name: Validar JavaScript
+        run: |
+          for f in build/app.js build/averia.js build/fase5.js build/fase6.js build/perfiles.js; do
+            node --check "$f"
+          done
+      - name: Validar build
+        run: python3 build/construir.py
+      - name: Comprobar copia residual
+        run: |
+          count=$(grep -EIn '[áéíóúñüÁÉÍÓÚÑÜ¿¡]' build/*.js | wc -l || true)
+          echo "grep_accent_lines=$count"
+          test "$count" -eq 0
+      - name: Guardar fase A
+        run: |
+          git config user.name 'SergioAguis32'
+          git config user.email 'sergioaguis32@gmail.com'
+          git add datos/textos.json build/app.js build/averia.js build/fase5.js build/fase6.js build/perfiles.js build/plantilla.html build/construir.py
+          if git diff --cached --quiet; then
+            echo 'Sin cambios pendientes'
+          else
+            git commit -m 'v2 fase A: sacar copia del código [skip ci]'
+            git push origin HEAD:main
+          fi
