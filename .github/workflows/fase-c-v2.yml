@@ -1,0 +1,216 @@
+name: Aplicar fase C v2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fase-c-v2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Aplicar limpieza y desbloqueos
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          def one(src, old, new, label):
+              n=src.count(old)
+              if n != 1:
+                  raise SystemExit(f'{label}: esperaba 1 coincidencia y encontré {n}')
+              return src.replace(old,new,1)
+
+          # --- plantilla: eliminar la navegación heredada y hacer el menú real/dinámico ---
+          p=Path('build/plantilla.html')
+          s=p.read_text(encoding='utf-8')
+          s=one(s,
+              '.layout{display:grid;grid-template-columns:190px minmax(0,1fr);min-height:calc(100vh - 64px)}.rail{position:sticky;',
+              '.layout{display:grid;grid-template-columns:minmax(0,1fr);min-height:calc(100vh - 64px)}.layout.layers-unlocked{grid-template-columns:190px minmax(0,1fr)}.rail{display:none;position:sticky;',
+              'grid sin riel')
+          s=one(s,
+              '.rail-group+.rail-group{margin-top:22px}',
+              '.layout.layers-unlocked>.rail{display:block}.rail-group+.rail-group{margin-top:22px}',
+              'mostrar riel al desbloquear')
+          s=s.replace('#legacyNav[hidden]{display:none!important}','')
+          s=one(s,
+              '@media(max-width:760px){.brand,.meta{display:none}.top{padding:0 9px;gap:7px}.select{max-width:130px}.layout{display:block}.rail{display:none}',
+              '@media(max-width:760px){.brand,.meta{display:none}.top{padding:0 9px;gap:7px}.select{max-width:130px}.layout{display:block}.rail,.layout.layers-unlocked>.rail{display:none}',
+              'riel móvil')
+          legacy='''<div id="legacyNav" hidden>\n  <div id="weekMeta"></div>\n  <button id="openMap" type="button">__T:menu.mapa__</button>\n  <button id="progressBtn" type="button">__T:menu.progreso__</button>\n  <button id="prevSession" type="button">←</button>\n  <button id="nextSession" type="button">→</button>\n  <div><span id="progressBar"></span></div>\n</div>\n'''
+          s=one(s,legacy,'','legacyNav')
+          old_menu='<nav class="menu-list" aria-label="__T:nav.menu__"><button class="menu-action" id="menuProgress" type="button">__T:menu.progreso__</button><button class="menu-action" id="menuLog" type="button">__T:menu.bitacora__</button><button class="menu-action" id="menuAverias" type="button">__T:menu.averias__</button><button class="menu-action" id="menuSearch" type="button">__T:menu.buscar__</button><button class="menu-action" id="menuMap" type="button">__T:menu.mapa__</button><button class="menu-action" id="menuSettings" type="button">__T:menu.ajustes__</button><button class="menu-action" id="menuCloseCourse" type="button" hidden>__T:menu.cierre__</button></nav>'
+          new_menu='<nav class="menu-list" id="menuList" aria-label="__T:nav.menu__"></nav>'
+          s=one(s,old_menu,new_menu,'menú estático')
+          progress='''<div class="dialog" id="progressDialog" aria-hidden="true"><div class="backdrop" data-close="progressDialog"></div><section class="panel dashboard" role="dialog" aria-modal="true" aria-labelledby="progressTitle"><button class="btn close" data-close="progressDialog">__T:nav.cerrar__</button><div class="eyebrow">__T:progreso.subtitulo__</div><h2 id="progressTitle">__T:progreso.titulo__</h2><div id="progressBody"></div><button class="btn danger" id="resetProgress">__T:extra.plantilla.005__</button></section></div>'''
+          unlock='''<div class="dialog" id="unlockDialog" aria-hidden="true"><div class="backdrop"></div><section class="panel unlock-panel" role="dialog" aria-modal="true" aria-labelledby="unlockTitle"><div class="eyebrow">__T:desbloqueo.titulo__</div><h2 id="unlockTitle"></h2><div class="content" id="unlockBody"></div><button class="btn" id="unlockContinue" type="button">__T:desbloqueo.continuar__</button></section></div>'''
+          s=one(s,progress,progress+'\n'+unlock,'diálogo de desbloqueo')
+          s=one(s,'.panel.dashboard{width:min(700px,94vw)}','.panel.dashboard{width:min(700px,94vw)}.panel.unlock-panel{width:min(520px,92vw);height:auto;max-height:90vh;top:50%;right:50%;transform:translate(50%,-50%);border:1px solid var(--l)}','estilo desbloqueo')
+
+          marker="<script>\n(()=>{\n'use strict';\nconst T=JSON.parse(document.getElementById('textosData').textContent);"
+          start=s.find(marker)
+          if start < 0: raise SystemExit('No encontré el script de navegación de fase B')
+          end=s.find('</script>',start)
+          if end < 0: raise SystemExit('No encontré el cierre del script de navegación')
+          end += len('</script>')
+          nav='''<script>\n(()=>{\n'use strict';\nconst T=JSON.parse(document.getElementById('textosData').textContent);\nconst by=id=>document.getElementById(id);\nconst sel=by('sessionSelect'),menu=by('menuDialog'),settings=by('settingsDialog'),menuBtn=by('menuBtn'),menuList=by('menuList');\nconst ITEMS=[['progress',1,T.menu.progreso],['log',3,T.menu.bitacora],['averias',10,T.menu.averias],['search',1,T.menu.buscar],['map',1,T.menu.mapa],['settings',1,T.menu.ajustes],['close-course',20,T.menu.cierre]];\nconst open=d=>{d.classList.add('open');d.setAttribute('aria-hidden','false')};\nconst close=d=>{d.classList.remove('open');d.setAttribute('aria-hidden','true')};\nconst closeMenu=()=>{close(menu);menuBtn.setAttribute('aria-expanded','false')};\nconst session=()=>Math.max(1,Math.min(20,Number(sel?.value)||1));\nfunction renderMenu(n){menuList.replaceChildren();for(const [action,at,label] of ITEMS){if(n<at)continue;const b=document.createElement('button');b.className='menu-action';b.type='button';b.dataset.menuAction=action;b.textContent=label;menuList.appendChild(b);}}\nfunction paint(n=session()){by('sessionIndicator').textContent=T.nav.sesionDe.replace('{n}',String(n));renderMenu(n);}\nmenuBtn.addEventListener('click',()=>{paint();open(menu);menuBtn.setAttribute('aria-expanded','true')});\nmenu.querySelectorAll('[data-menu-close]').forEach(x=>x.addEventListener('click',closeMenu));\nsettings.querySelectorAll('[data-settings-close]').forEach(x=>x.addEventListener('click',()=>close(settings)));\nmenuList.addEventListener('click',e=>{const b=e.target.closest('[data-menu-action]');if(!b)return;const action=b.dataset.menuAction;closeMenu();if(action==='settings'){open(settings);return;}document.dispatchEvent(new CustomEvent('curso:open-'+action));});\nby('settingsProfiles').onclick=()=>{close(settings);document.dispatchEvent(new CustomEvent('curso:open-profiles'));};\ndocument.addEventListener('curso:session',e=>paint(Number(e.detail?.session)||session()));\nnew MutationObserver(()=>{if(!menu.classList.contains('open'))menuBtn.setAttribute('aria-expanded','false')}).observe(menu,{attributes:true,attributeFilter:['class']});\npaint();\n})();\n</script>'''
+          s=s[:start]+nav+s[end:]
+          p.write_text(s,encoding='utf-8')
+
+          # --- app: controles propios al pie, eventos reales y desbloqueos persistentes ---
+          p=Path('build/app.js'); s=p.read_text(encoding='utf-8')
+          s=one(s,
+              "  const instala = JSON.parse(document.getElementById('instalaData').textContent);",
+              "  const instala = JSON.parse(document.getElementById('instalaData').textContent);\n  const textos = JSON.parse(document.getElementById('textosData').textContent);",
+              'textos en app')
+          s=one(s,
+              "const estadoBase = () => ({ version: 3, sesion: 1, bloque: 0, checkpoints: {}, quizVistos: {}, quizResultados: {}, servidorEn: null, costo: { mensual: '', inicio: '' }, updatedAt: null });",
+              "const estadoBase = () => ({ version: 3, sesion: 1, bloque: 0, checkpoints: {}, quizVistos: {}, quizResultados: {}, desbloqueos: {}, servidorEn: null, costo: { mensual: '', inicio: '' }, updatedAt: null });",
+              'estado desbloqueos')
+          s=one(s,
+              "quizResultados: { ...(x.quizResultados || {}) }, costo:",
+              "quizResultados: { ...(x.quizResultados || {}) }, desbloqueos: { ...(x.desbloqueos || {}) }, costo:",
+              'migración desbloqueos')
+          old_progress="  function pintarProgreso() {const p = porcentaje();$('#progressBtn').textContent = `__T:extra.app.042__ ${p}%`;$('#progressBar').style.width = `${p}%`;$('#storageWarn').hidden = storageOK;const m = $('#progressBody');if (m) {m.innerHTML = dashboardHTML();bindDashboard();}}"
+          new_progress="  function pintarProgreso() {$('#storageWarn').hidden = storageOK;const m = $('#progressBody');if (m) {m.innerHTML = dashboardHTML();bindDashboard();}}"
+          s=one(s,old_progress,new_progress,'progreso sin proxy')
+          old_prefix="function render() {const s = curso.sesiones[sesion - 1],[key, label] = bloques[bloque],week = curso.semanas.find((w) => w.num === s.semana);select.value = String(sesion);$('#weekMeta').textContent = `__T:extra.app.043__ ${s.semana} · ${week?.titulo || ''}`;$('#prevSession').disabled = sesion === 1;$('#nextSession').disabled = sesion === curso.sesiones.length;const dots ="
+          new_prefix="function render() {const s = curso.sesiones[sesion - 1],[key, label] = bloques[bloque];select.value = String(sesion);const dots ="
+          s=one(s,old_prefix,new_prefix,'render sin navegación vieja')
+          old_footer='''<nav class="block-nav"><button class="text-btn" id="prevBlock" ${sesion === 1 && bloque === 0 ? 'disabled' : ''}>__T:extra.app.045__</button><button class="text-btn" id="nextBlock">${bloque === 5 ? sesion === curso.sesiones.length ? "__T:extra.app.046__" : "__T:extra.app.047__" : "__T:extra.app.048__"}</button></nav>'''
+          new_footer='''<nav class="block-nav"><button class="text-btn" id="prevBlock" ${sesion === 1 && bloque === 0 ? 'disabled' : ''}>__T:nav.anterior__</button><button class="text-btn" id="nextBlock" ${sesion === curso.sesiones.length && bloque === 5 ? 'disabled' : ''}>__T:nav.siguiente__</button></nav>'''
+          s=one(s,old_footer,new_footer,'pie anterior/siguiente')
+          s=one(s,
+              "$('#nextBlock').onclick = () => moverBloque(1);guardar();renderRail();}",
+              "$('#nextBlock').onclick = () => moverBloque(1);guardar();renderRail();document.dispatchEvent(new CustomEvent('curso:session', { detail: { session: sesion } }));setTimeout(mostrarDesbloqueo, 0);}",
+              'evento de sesión')
+          old_rail="  function renderRail() {const html = railHTML();$('#rail').innerHTML = html;$('#mobileRail').innerHTML = html;document.querySelectorAll('[data-concept]').forEach((b) => b.onclick = () => {const c = conceptFor(b.dataset.concept);if (!c) return;$('#conceptTitle').textContent = c.nombre;$('#conceptBody').innerHTML = renderMarkdown(c.md);bindCopy($('#conceptBody'));openDialog('conceptDialog');});}"
+          new_rail="  function renderRail() {const desktop = $('#rail'),mobile = $('#mobileRail'),layout = $('.layout'),activo = sesion >= 6;layout?.classList.toggle('layers-unlocked', activo);if (!activo) {desktop.innerHTML = '';mobile.innerHTML = '';return;}const html = railHTML();desktop.innerHTML = html;mobile.innerHTML = html;document.querySelectorAll('[data-concept]').forEach((b) => b.onclick = () => {const c = conceptFor(b.dataset.concept);if (!c) return;$('#conceptTitle').textContent = c.nombre;$('#conceptBody').innerHTML = renderMarkdown(c.md);bindCopy($('#conceptBody'));openDialog('conceptDialog');});}"
+          s=one(s,old_rail,new_rail,'riel progresivo')
+          old_dialog="  function openDialog(id) {const d = $('#' + id);d.classList.add('open');d.setAttribute('aria-hidden', 'false');}"
+          unlock_logic='''  const DESBLOQUEOS = [['snapshots', 2], ['bitacora', 3], ['riel', 6], ['averias', 10]];\n  let desbloqueoActual = null;\n  function mostrarDesbloqueo() {const d = $('#unlockDialog');if (!d || d.classList.contains('open')) return;const pendiente = DESBLOQUEOS.find(([id, n]) => sesion >= n && !estado.desbloqueos[id] && textos.desbloqueo?.[id]);if (!pendiente) return;const [id] = pendiente,info = textos.desbloqueo[id];desbloqueoActual = id;$('#unlockTitle').textContent = info.titulo;$('#unlockBody').innerHTML = String(info.cuerpo || '').split(/\\n{2,}/).map((x) => `<p>${esc(x)}</p>`).join('');$('#unlockContinue').onclick = () => {if (!desbloqueoActual) return;estado.desbloqueos[desbloqueoActual] = true;desbloqueoActual = null;guardar();closeDialog('unlockDialog');setTimeout(mostrarDesbloqueo, 0);};openDialog('unlockDialog');}\n'''
+          s=one(s,old_dialog,unlock_logic+old_dialog,'lógica de desbloqueo')
+          old_bind="  select.onchange = () => goSession(+select.value);$('#prevSession').onclick = () => goSession(sesion - 1);$('#nextSession').onclick = () => goSession(sesion + 1);$('#progressBtn').onclick = () => {pintarProgreso();openDialog('progressDialog');};$('#openMap').onclick = () => openDialog('mapDialog');$('#resetProgress').onclick = () => {if (confirm(\"__T:extra.app.051__\")) {estado = estadoBase();sesion = 1;bloque = 0;guardar();closeDialog('progressDialog');render();}};document.querySelectorAll('[data-close]').forEach((x) => x.onclick = () => closeDialog(x.dataset.close));document.addEventListener('keydown', (e) => {if (e.key === \"__T:extra.app.052__\") document.querySelectorAll('.dialog.open').forEach((d) => closeDialog(d.id));});"
+          new_bind="  select.onchange = () => goSession(+select.value);document.addEventListener('curso:open-progress', () => {pintarProgreso();openDialog('progressDialog');});document.addEventListener('curso:open-map', () => openDialog('mapDialog'));$('#resetProgress').onclick = () => {if (confirm(\"__T:extra.app.051__\")) {estado = estadoBase();sesion = 1;bloque = 0;guardar();closeDialog('progressDialog');render();}};document.querySelectorAll('[data-close]').forEach((x) => x.onclick = () => closeDialog(x.dataset.close));document.addEventListener('keydown', (e) => {if (e.key === \"__T:extra.app.052__\") document.querySelectorAll('.dialog.open:not(#unlockDialog)').forEach((d) => closeDialog(d.id));});"
+          s=one(s,old_bind,new_bind,'escuchadores sin proxies')
+          p.write_text(s,encoding='utf-8')
+
+          # --- averías: sin botón fantasma, práctica desde S10 y cronómetro solo desde S19 ---
+          p=Path('build/averia.js'); s=p.read_text(encoding='utf-8')
+          s=s.replace('#averiaBtn{white-space:nowrap}','').replace('#averiaBtn{padding:8px}','')
+          old_btn="  const anchor = document.getElementById('progressBtn');\n  const btn = document.createElement('button');btn.className = 'btn';btn.id = 'averiaBtn';btn.textContent = \"__T:averias.titulo__\";btn.setAttribute('aria-label', \"__T:extra.averia.002__\");anchor?.before(btn);\n"
+          s=one(s,old_btn,"  function currentA() {return Number(document.getElementById('sessionSelect')?.value || 1);}\n",'botón averías')
+          timer_markup='<div class="timer"><strong id="avClock">01:00</strong><button class="btn" id="avTimerStart">__T:extra.averia.013__</button><button class="btn" id="avTimerReset">__T:extra.averia.014__</button><span class="muted">__T:extra.averia.015__</span></div>'
+          s=one(s,timer_markup,'<div id="avTimerMount"></div>','montaje cronómetro')
+          old_open="  function openA() {dlg.classList.add('open');dlg.setAttribute('aria-hidden', 'false');renderRules();renderCards();setTimeout(() => document.getElementById('avOutput')?.focus(), 0);}\n  function closeA() {dlg.classList.remove('open');dlg.setAttribute('aria-hidden', 'true');}\n  btn.onclick = openA;dlg.querySelectorAll('[data-av-close]').forEach((x) => x.onclick = closeA);\n  dlg.querySelectorAll('[data-av-tab]').forEach((t) => t.onclick = () => {dlg.querySelectorAll('[data-av-tab]').forEach((x) => x.classList.toggle('active', x === t));dlg.querySelectorAll('[data-av-view]').forEach((v) => v.hidden = v.dataset.avView !== t.dataset.avTab);if (t.dataset.avTab === 'cards') renderCards();});"
+          new_open="  function selectTab(name) {dlg.querySelectorAll('[data-av-tab]').forEach((x) => x.classList.toggle('active', x.dataset.avTab === name));dlg.querySelectorAll('[data-av-view]').forEach((v) => v.hidden = v.dataset.avView !== name);}\n  function syncAvailability() {const libre = currentA() >= 10;dlg.querySelector('[data-av-tab=\"diag\"]').hidden = !libre;dlg.querySelector('[data-av-tab=\"cards\"]').hidden = !libre;renderTimer();}\n  function openA(tab = 'diag') {if (tab !== 'search' && currentA() < 10) return;syncAvailability();selectTab(tab);dlg.classList.add('open');dlg.setAttribute('aria-hidden', 'false');renderRules();if (tab === 'cards') renderCards();setTimeout(() => document.getElementById(tab === 'search' ? 'avSearch' : 'avOutput')?.focus(), 0);}\n  function closeA() {dlg.classList.remove('open');dlg.setAttribute('aria-hidden', 'true');}\n  document.addEventListener('curso:open-averias', () => openA('diag'));document.addEventListener('curso:open-search', () => openA('search'));document.addEventListener('curso:session', syncAvailability);dlg.querySelectorAll('[data-av-close]').forEach((x) => x.onclick = closeA);\n  dlg.querySelectorAll('[data-av-tab]').forEach((t) => t.onclick = () => {if (t.hidden) return;selectTab(t.dataset.avTab);if (t.dataset.avTab === 'cards') renderCards();});"
+          s=one(s,old_open,new_open,'apertura averías')
+          s=one(s,
+              "  function renderCards() {const cards = cardsData(),dueCards = cards.filter((c) => due(c.id)),shown = (dueCards.length ? dueCards : cards).slice(0, 12);",
+              "  function renderCards() {renderTimer();const cards = cardsData(),dueCards = cards.filter((c) => due(c.id)),shown = (dueCards.length ? dueCards : cards).slice(0, 12);",
+              'render cronómetro')
+          old_timer="  let timer = null,left = 60,running = false;const clock = document.getElementById('avClock'),start = document.getElementById('avTimerStart');\n  function paintClock() {clock.textContent = `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(left % 60).padStart(2, '0')}`;start.textContent = running ? \"__T:extra.averia.037__\" : \"__T:extra.averia.013__\";}\n  start.onclick = () => {running = !running;if (running) {timer = setInterval(() => {left--;paintClock();if (left <= 0) {clearInterval(timer);timer = null;running = false;left = 0;paintClock();}}, 1000);} else {clearInterval(timer);timer = null;}paintClock();};\n  document.getElementById('avTimerReset').onclick = () => {clearInterval(timer);timer = null;running = false;left = 60;paintClock();};paintClock();"
+          new_timer="  let timer = null,left = 60,running = false;\n  function paintClock() {const clock = document.getElementById('avClock'),start = document.getElementById('avTimerStart');if (!clock || !start) return;clock.textContent = `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(left % 60).padStart(2, '0')}`;start.textContent = running ? \"__T:extra.averia.037__\" : \"__T:extra.averia.013__\";}\n  function renderTimer() {const mount = document.getElementById('avTimerMount');if (!mount) return;if (currentA() < 19) {if (timer) clearInterval(timer);timer = null;running = false;left = 60;mount.replaceChildren();return;}if (mount.firstElementChild) {paintClock();return;}mount.innerHTML = `<div class=\"timer\"><strong id=\"avClock\">01:00</strong><button class=\"btn\" id=\"avTimerStart\">__T:extra.averia.013__</button><button class=\"btn\" id=\"avTimerReset\">__T:extra.averia.014__</button><span class=\"muted\">__T:extra.averia.015__</span></div>`;const start = document.getElementById('avTimerStart');start.onclick = () => {running = !running;if (running) {timer = setInterval(() => {left--;paintClock();if (left <= 0) {clearInterval(timer);timer = null;running = false;left = 0;paintClock();}}, 1000);} else {clearInterval(timer);timer = null;}paintClock();};document.getElementById('avTimerReset').onclick = () => {clearInterval(timer);timer = null;running = false;left = 60;paintClock();};paintClock();}"
+          s=one(s,old_timer,new_timer,'cronómetro progresivo')
+          p.write_text(s,encoding='utf-8')
+
+          # --- bitácora: abrir por evento, sin botón fantasma ---
+          p=Path('build/fase5.js'); s=p.read_text(encoding='utf-8')
+          s=s.replace('#workBtn{white-space:nowrap}','').replace('#workBtn{padding:8px}','')
+          old_btn="  const anchor = document.getElementById('averiaBtn') || document.getElementById('progressBtn');\n  const btn = document.createElement('button');btn.className = 'btn';btn.id = 'workBtn';btn.textContent = \"__T:menu.bitacora__\";btn.setAttribute('aria-label', \"__T:extra.fase5.001__\");anchor?.before(btn);\n"
+          s=one(s,old_btn,'','botón bitácora')
+          s=one(s,
+              "  btn.onclick = open;dlg.querySelectorAll('[data-w5-close]').forEach((x) => x.onclick = close);",
+              "  document.addEventListener('curso:open-log', () => {if (currentSession() >= 3) open();});dlg.querySelectorAll('[data-w5-close]').forEach((x) => x.onclick = close);",
+              'apertura bitácora')
+          p.write_text(s,encoding='utf-8')
+
+          # --- cierre: evento real, sin barra móvil heredada, conservar desbloqueos al importar ---
+          p=Path('build/fase6.js'); s=p.read_text(encoding='utf-8')
+          s=one(s,
+              "const qr = {};if (x.quizResultados && typeof x.quizResultados === 'object') for (const [k, v] of Object.entries(x.quizResultados)) if (QUIZ_KEYS.has(k) && (v === 'bien' || v === 'repasar')) qr[k] = v;return { version: 3, sesion: ses, bloque: blo, checkpoints: boolMap(x.checkpoints, CP_KEYS), quizVistos: boolMap(x.quizVistos, QUIZ_KEYS), quizResultados: qr, servidorEn, costo:",
+              "const qr = {};if (x.quizResultados && typeof x.quizResultados === 'object') for (const [k, v] of Object.entries(x.quizResultados)) if (QUIZ_KEYS.has(k) && (v === 'bien' || v === 'repasar')) qr[k] = v;const desbloqueos = {};for (const k of ['snapshots','bitacora','riel','averias','cronometro','cierre']) if (typeof x.desbloqueos?.[k] === 'boolean') desbloqueos[k] = x.desbloqueos[k];return { version: 3, sesion: ses, bloque: blo, checkpoints: boolMap(x.checkpoints, CP_KEYS), quizVistos: boolMap(x.quizVistos, QUIZ_KEYS), quizResultados: qr, desbloqueos, servidorEn, costo:",
+              'sanitizar desbloqueos fase6')
+          s=s.replace('.mobile-tools6{display:none}','')
+          s=s.replace('#workBtn,#averiaBtn,#progressBtn,#finalBtn{display:none}.mobile-tools6{display:inline-block}.top{height:auto;min-height:64px;flex-wrap:wrap;padding:8px 9px}','')
+          old_final="  const anchor = $6('#workBtn') || $6('#averiaBtn') || $6('#progressBtn');\n  const finalBtn = document.createElement('button');finalBtn.className = 'btn';finalBtn.id = 'finalBtn';finalBtn.textContent = \"__T:extra.fase6.009__\";finalBtn.type = 'button';finalBtn.setAttribute('aria-label', \"__T:extra.fase6.010__\");anchor?.before(finalBtn);\n"
+          s=one(s,old_final,'','botón cierre')
+          s=one(s,
+              "  finalBtn.onclick = open6;dlg.querySelectorAll('[data-f6-close]').forEach((x) => x.onclick = close6);",
+              "  document.addEventListener('curso:open-close-course', () => {if (Number($6('#sessionSelect')?.value || 1) >= 20) open6();});dlg.querySelectorAll('[data-f6-close]').forEach((x) => x.onclick = close6);",
+              'apertura cierre')
+          s=one(s,
+              "$6('#f6OpenLog').onclick = () => {close6();$6('#workBtn')?.click();};",
+              "$6('#f6OpenLog').onclick = () => {close6();document.dispatchEvent(new CustomEvent('curso:open-log'));};",
+              'enlace cierre-bitácora')
+          a=s.find("const toolsBtn = document.createElement('button');")
+          b=s.find('let opener = null;',a)
+          if a < 0 or b < 0: raise SystemExit('No encontré la barra móvil heredada de fase6')
+          s=s[:a]+s[b:]
+          p.write_text(s,encoding='utf-8')
+
+          # --- perfiles: abrir desde Ajustes, sin botón fantasma, conservar desbloqueos ---
+          p=Path('build/perfiles.js'); s=p.read_text(encoding='utf-8')
+          s=one(s,
+              "return { version: 3, sesion: Math.max(1, Math.min(20, Math.trunc(Number(x.sesion) || 1))), bloque: Math.max(0, Math.min(5, Math.trunc(Number(x.bloque) || 0))), checkpoints: boolMap(x.checkpoints, CP), quizVistos: boolMap(x.quizVistos, QUIZ), quizResultados: qr, servidorEn, costo:",
+              "const desbloqueos = {};for (const k of ['snapshots','bitacora','riel','averias','cronometro','cierre']) if (typeof x.desbloqueos?.[k] === 'boolean') desbloqueos[k] = x.desbloqueos[k];return { version: 3, sesion: Math.max(1, Math.min(20, Math.trunc(Number(x.sesion) || 1))), bloque: Math.max(0, Math.min(5, Math.trunc(Number(x.bloque) || 0))), checkpoints: boolMap(x.checkpoints, CP), quizVistos: boolMap(x.quizVistos, QUIZ), quizResultados: qr, desbloqueos, servidorEn, costo:",
+              'sanitizar desbloqueos perfiles')
+          s=s.replace('#profileBtn{white-space:nowrap}','').replace('#profileBtn{display:none}','')
+          old_profile="  const anchor = document.getElementById('progressBtn');const pbtn = document.createElement('button');pbtn.className = 'btn';pbtn.id = 'profileBtn';pbtn.textContent = profiles.active === 'owner' ? \"__T:extra.perfiles.006__\" : '👤 ' + (activeRecord()?.nombre || \"__T:extra.perfiles.007__\");pbtn.setAttribute('aria-label', \"__T:extra.perfiles.008__\");anchor?.before(pbtn);\n"
+          s=one(s,old_profile,'','botón perfiles')
+          s=one(s,
+              "  pbtn.onclick = openProfiles;dlg.querySelectorAll('[data-pr-close]').forEach((x) => x.onclick = closeProfiles);",
+              "  document.addEventListener('curso:open-profiles', openProfiles);dlg.querySelectorAll('[data-pr-close]').forEach((x) => x.onclick = closeProfiles);",
+              'apertura perfiles')
+          p.write_text(s,encoding='utf-8')
+
+          # --- CI persistente: la regla, no el caso ---
+          p=Path('.github/workflows/fase-a-v2.yml'); s=p.read_text(encoding='utf-8')
+          start=s.find('      - name: Validar navegación\n')
+          end=s.find('      - name: Validar datos y build\n',start)
+          if start < 0 or end < 0: raise SystemExit('No encontré el bloque de validación de navegación')
+          block='''      - name: Validar navegación\n        run: |\n          python3 - <<'PY'\n          from pathlib import Path\n          import re\n          tpl=Path('build/plantilla.html').read_text(encoding='utf-8')\n          app=Path('build/app.js').read_text(encoding='utf-8')\n          top=tpl.split('<header class="top">',1)[1].split('</header>',1)[0]\n          assert top.count('<div class="brand">') == 1\n          assert 'id="sessionIndicator"' in top\n          assert 'id="menuBtn"' in top\n          assert len(re.findall(r'<button\\b',top)) == 1, 'el encabezado debe tener un solo botón'\n          assert not re.search(r'id\\s*=\\s*["\\\'][^"\\\']*legacy',tpl,re.I), 'no se permiten ids legacy'\n          for ghost in ('legacyNav','progressBtn','prevSession','nextSession','openMap','progressBar'):\n              assert ghost not in tpl and ghost not in app, ghost\n          map_part=tpl.split('id="mapDialog"',1)[1].split('</section></div>',1)[0]\n          assert 'id="sessionSelect"' in map_part\n          assert 'id="menuList"' in tpl\n          assert '__T:nav.anterior__' in app and '__T:nav.siguiente__' in app\n          assert "['log',3,T.menu.bitacora]" in tpl\n          assert "['averias',10,T.menu.averias]" in tpl\n          assert "['close-course',20,T.menu.cierre]" in tpl\n          assert 'sesion >= 6' in app\n          assert 'currentA() < 19' in Path('build/averia.js').read_text(encoding='utf-8')\n          print('navigation_contract=ok')\n          print('legacy_id_hits=0')\n          print('header_button_count=1')\n          PY\n'''
+          s=s[:start]+block+s[end:]
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Validar fase C
+        run: |
+          for f in build/app.js build/averia.js build/fase5.js build/fase6.js build/perfiles.js; do node --check "$f"; done
+          python3 -m json.tool datos/textos.json >/dev/null
+          python3 build/construir.py
+          test -s public/index.html
+          ! grep -q '__T:' public/index.html
+          ! grep -q '__TEXTOS_JSON__' public/index.html
+          ! grep -Eqi 'id=["'"'][^"'"']*legacy' build/plantilla.html
+          test "$(python3 - <<'PY'
+          import re
+          from pathlib import Path
+          s=Path('build/plantilla.html').read_text(encoding='utf-8')
+          top=s.split('<header class="top">',1)[1].split('</header>',1)[0]
+          print(len(re.findall(r'<button\b',top)))
+          PY
+          )" -eq 1
+          grep -q '__T:nav.anterior__' build/app.js
+          grep -q '__T:nav.siguiente__' build/app.js
+          ! grep -Eq 'progressBtn|prevSession|nextSession|openMap|progressBar|legacyNav' build/app.js build/plantilla.html
+          echo 'FASE_C_STATIC_OK'
+      - name: Guardar fase C y retirar herramienta temporal
+        run: |
+          rm .github/workflows/fase-c-v2.yml
+          git config user.name 'SergioAguis32'
+          git config user.email 'sergioaguis32@gmail.com'
+          git add build/plantilla.html build/app.js build/averia.js build/fase5.js build/fase6.js build/perfiles.js .github/workflows/fase-a-v2.yml .github/workflows/fase-c-v2.yml
+          git diff --cached --check
+          git commit -m 'v2 fase C: desbloqueo progresivo y navegación sin legado'
+          git push origin HEAD:main
