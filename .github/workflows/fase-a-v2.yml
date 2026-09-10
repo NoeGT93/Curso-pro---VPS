@@ -1,39 +1,34 @@
-name: Fase A v2
+name: Verificar copia de interfaz
 
 on:
   push:
     branches: [main]
     paths:
-      - 'tools/fase_a_refactor.mjs'
-      - 'datos/textos.json'
+      - 'build/*.js'
+      - 'build/plantilla.html'
       - 'build/construir.py'
+      - 'datos/textos.json'
+      - '.github/workflows/fase-a-v2.yml'
+  pull_request:
+    paths:
+      - 'build/*.js'
+      - 'build/plantilla.html'
+      - 'build/construir.py'
+      - 'datos/textos.json'
       - '.github/workflows/fase-a-v2.yml'
 
 permissions:
-  contents: write
-
-concurrency:
-  group: fase-a-v2
-  cancel-in-progress: true
+  contents: read
 
 jobs:
-  refactor:
+  verificar:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Preparar parser
-        run: npm install --no-save --no-package-lock @babel/parser @babel/traverse @babel/generator
-      - name: Extraer copia
-        run: |
-          rc=0
-          node tools/fase_a_refactor.mjs || rc=$?
-          test "$rc" -eq 0 -o "$rc" -eq 2
       - name: Validar JavaScript
         run: |
           for f in build/app.js build/averia.js build/fase5.js build/fase6.js build/perfiles.js; do
@@ -45,22 +40,11 @@ jobs:
           echo "grep_accent_lines=$count"
           test "$count" -eq 0
           ! grep -EIn 'Regreso|Tu regreso|Fase final|Bitácora y recuperación|Autocorrector|Modo Avería' build/*.js
-      - name: Validar build
+      - name: Validar datos y build
         run: |
+          python3 -m json.tool datos/textos.json >/dev/null
           python3 -m py_compile build/construir.py build/parse_curso.py
           python3 build/construir.py
           test -s public/index.html
           ! grep -q '__T:' public/index.html
           ! grep -q '__TEXTOS_JSON__' public/index.html
-      - name: Guardar extracción si cambia
-        run: |
-          git config user.name 'SergioAguis32'
-          git config user.email 'sergioaguis32@gmail.com'
-          git add datos/textos.json build/app.js build/averia.js build/fase5.js build/fase6.js build/perfiles.js build/plantilla.html
-          git diff --cached --check
-          if git diff --cached --quiet; then
-            echo 'Refactor idempotente: sin cambios nuevos'
-          else
-            git commit -m 'v2 fase A: completar extracción de copia [skip ci]'
-            git push origin HEAD:main
-          fi
