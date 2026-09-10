@@ -18,7 +18,7 @@ on:
       - '.github/workflows/fase-a-v2.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verificar:
@@ -29,16 +29,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Corregir copia conocida
-        run: |
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-          p=Path('datos/textos.json')
-          data=json.loads(p.read_text(encoding='utf-8'))
-          data['extra']['fase5']['043']='- Dónde está tu servidor:'
-          p.write_text(json.dumps(data,ensure_ascii=False,indent=1)+'\n',encoding='utf-8')
-          PY
       - name: Validar JavaScript
         run: |
           for f in build/app.js build/averia.js build/fase5.js build/fase6.js build/perfiles.js; do node --check "$f"; done
@@ -81,15 +71,3 @@ jobs:
           test -s public/index.html
           ! grep -q '__T:' public/index.html
           ! grep -q '__TEXTOS_JSON__' public/index.html
-      - name: Guardar corrección
-        run: |
-          if git diff --quiet -- datos/textos.json; then
-            echo 'textos.json ya estaba corregido'
-          else
-            git config user.name 'SergioAguis32'
-            git config user.email 'sergioaguis32@gmail.com'
-            git add datos/textos.json
-            git diff --cached --check
-            git commit -m 'v2 fase A: corregir Estado real del VPS [skip ci]'
-            git push origin HEAD:main
-          fi
