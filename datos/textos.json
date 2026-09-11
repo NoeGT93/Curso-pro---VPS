@@ -126,7 +126,7 @@
   "borrarConfirma": "Esto borra tu avance en este navegador y no se puede deshacer."
  },
  "sesion": {
-  "paso": "{bloque} · paso {n} de 6",
+  "paso": "{bloque} · paso {n} de {total}",
   "bloqueIdea": "Idea",
   "bloqueMision": "Misión",
   "bloqueSalida": "Salida sana",
@@ -331,7 +331,7 @@
    "037": "# Copia de progreso — VPS desde cero absoluto\n\nExportada:",
    "038": "## Resumen\n\n- Sesión actual:",
    "039": "- Bloque actual:",
-   "040": "/6\n- Checkpoints marcados:",
+   "040": "\n- Checkpoints marcados:",
    "041": "/101\n- Quiz dominados:",
    "042": "- Quiz para repasar:",
    "043": "- Dónde está tu servidor:",
