@@ -21,7 +21,16 @@ jobs:
         with:
           node-version: '22'
       - name: Aplicar fase E
-        run: python3 .github/scripts/apply_phase_e.py
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('.github/scripts/apply_phase_e.py')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('"blo=Math.max(0, Math.min(5, Math.trunc(Number(x.bloque) || 0)))"','"blo = Math.max(0, Math.min(5, Math.trunc(Number(x.bloque) || 0)))"')
+          s=s.replace('"blo=Math.max(0, Math.min(ses >= 3 ? 6 : 5, Math.trunc(Number(x.bloque) || 0)))"','"blo = Math.max(0, Math.min(ses >= 3 ? 6 : 5, Math.trunc(Number(x.bloque) || 0)))"')
+          p.write_text(s,encoding='utf-8')
+          PY
+          python3 .github/scripts/apply_phase_e.py
       - name: Validar cambios
         run: |
           for f in build/*.js; do node --check "$f"; done
