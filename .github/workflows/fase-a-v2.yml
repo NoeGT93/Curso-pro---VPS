@@ -150,6 +150,7 @@ jobs:
           assert 'Number(n) >= 3 ? bloques : bloques.slice(0, 6)' in app
           assert 'sessionCloseText' in app and 'finishSession' in app and 'skipSession' in app
           assert "${cierre ? '' : snapshotHTML(s)}${cierre ? '' : extrasHTML(s)}${nav}" in app
+          assert 'nav = cierre ? `<nav class="block-nav"><button class="text-btn" id="prevBlock">__T:nav.anterior__</button></nav>`' in app
           for key in ('cierrePregunta','cierreAyuda','cierreGuardar','cierreSaltar'):
               assert f'textos.sesion.{key}' in app, key
           for old in ('id="logForm"','id="logType"','id="logText"','data-log-del','data-w5-tab="log"'):
@@ -160,9 +161,38 @@ jobs:
           assert '__T:sesion.bloqueCierre__' in f6 and '__T:sesion.bloqueCierre__' in perfiles
           assert textos['sesion']['paso'] == '{bloque} · paso {n} de {total}'
           print('session_log_step7=ok')
+          print('session_log_previous=ok')
           print('session_log_focused=ok')
           print('log_menu_readonly=ok')
           print('recovery_tools_preserved=ok')
+          PY
+      - name: Validar temas y terminal
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          app=Path('build/app.js').read_text(encoding='utf-8')
+          tpl=Path('build/plantilla.html').read_text(encoding='utf-8')
+          textos=json.loads(Path('datos/textos.json').read_text(encoding='utf-8'))
+          assert 'id="themeSelect"' in tpl
+          for value in ('system','light','dark'):
+              assert f'value="{value}"' in tpl, value
+          assert 'cursoVpsTemaV1' in tpl
+          assert ':root[data-theme="dark"]' in tpl
+          assert ':root:not([data-theme="light"])' in tpl
+          assert '--p:#161916' in tpl and '--s:#232923' in tpl
+          assert '.code-frame{border:1px solid var(--cb)' in tpl
+          assert '.code-head{display:flex' in tpl
+          assert '.code-output pre{background:transparent' in tpl
+          assert 'textos.sesion.etiquetaComando' in app
+          assert 'textos.sesion.etiquetaSalida' in app
+          assert "closest('.code-wrap').querySelector('code')" in app
+          assert textos['ajustes']['temaSistema'] and textos['ajustes']['temaClaro'] and textos['ajustes']['temaOscuro']
+          assert textos['sesion']['etiquetaComando'] and textos['sesion']['etiquetaSalida']
+          print('theme_system_default=ok')
+          print('theme_manual_persistence=ok')
+          print('command_output_structure=ok')
+          print('command_output_labels=ok')
           PY
       - name: Validar datos y build
         run: |
