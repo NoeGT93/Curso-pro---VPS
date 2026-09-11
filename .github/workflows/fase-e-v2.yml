@@ -64,7 +64,6 @@ jobs:
         run: |
           git config user.name "SergioAguis32"
           git config user.email "sergioaguis32@gmail.com"
-          git rm -f .github/workflows/fase-e-v2.yml .github/scripts/apply_phase_e.py
-          git add build/app.js build/fase5.js build/fase6.js build/perfiles.js build/plantilla.html datos/textos.json .github/workflows/fase-a-v2.yml
+          git add build/app.js build/fase5.js build/fase6.js build/perfiles.js build/plantilla.html datos/textos.json
           git commit -m "v2 fase E: bitácora al cierre de sesión"
           git push origin main
