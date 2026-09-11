@@ -7,6 +7,9 @@ on:
       - 'build/*.js'
       - 'build/plantilla.html'
       - 'build/construir.py'
+      - 'build/parse_curso.py'
+      - 'contenido/CURSO_VPS_v3.md'
+      - 'datos/curso_partes/**'
       - 'datos/textos.json'
       - '.github/workflows/fase-a-v2.yml'
   pull_request:
@@ -14,6 +17,9 @@ on:
       - 'build/*.js'
       - 'build/plantilla.html'
       - 'build/construir.py'
+      - 'build/parse_curso.py'
+      - 'contenido/CURSO_VPS_v3.md'
+      - 'datos/curso_partes/**'
       - 'datos/textos.json'
       - '.github/workflows/fase-a-v2.yml'
 
@@ -107,19 +113,28 @@ jobs:
           PY
       - name: Validar entrada
         run: |
+          python3 build/parse_curso.py contenido/CURSO_VPS_v3.md /tmp/curso-ci.json >/tmp/parse-curso.log
           python3 - <<'PY'
           from pathlib import Path
+          import json
           app=Path('build/app.js').read_text(encoding='utf-8')
           entrada=Path('build/entrada.js').read_text(encoding='utf-8')
           builder=Path('build/construir.py').read_text(encoding='utf-8')
+          curso=json.loads(Path('/tmp/curso-ci.json').read_text(encoding='utf-8'))
+          mision=curso['sesiones'][0]['mision']
+          anchors=('Mac','Linux','Windows','Paso 2')
+          missing=[x for x in anchors if x not in mision]
+          assert not missing, f'sesión 1 perdió anclas de SO: {missing}'
           assert "entrada: { completa: false, paso: 0, nombre: '', so: '' }" in app
           assert 'window.cursoVpsSetEntrada' in app
           assert 'cursoE.semanas' in entrada and 'cursoE.piezas' in entrada
           assert "Number(st.sesion)!==1||Number(st.bloque)!==1" in entrada
+          assert 'session1_os_branch_anchors_missing' in entrada
           assert 'for p in (ENTRADA,AVERIA,FASE5,FASE6,PERFILES)' in builder
           print('entry_three_steps=ok')
           print('entry_state_persisted=ok')
           print('session1_os_branch=ok')
+          print('session1_os_anchor_contract=ok')
           PY
       - name: Validar datos y build
         run: |
