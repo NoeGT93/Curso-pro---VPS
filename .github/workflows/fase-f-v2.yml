@@ -1,0 +1,121 @@
+name: Aplicar fase F v2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fase-f-v2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Aplicar navegación de cierre y temas
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def one(src, old, new, label):
+              n = src.count(old)
+              if n != 1:
+                  raise SystemExit(f'{label}: esperaba 1 coincidencia y encontré {n}')
+              return src.replace(old, new, 1)
+
+          # E: el cierre conserva Anterior, para poder releer la sesión antes de anotar.
+          p = Path('build/app.js')
+          s = p.read_text(encoding='utf-8')
+          old = '''cierre = key === 'cierre',nav = cierre ? '' : `<nav class="block-nav"><button class="text-btn" id="prevBlock" ${sesion === 1 && bloque === 0 ? 'disabled' : ''}>__T:nav.anterior__</button><button class="text-btn" id="nextBlock">__T:nav.siguiente__</button></nav>`;'''
+          new = '''cierre = key === 'cierre',nav = cierre ? `<nav class="block-nav"><button class="text-btn" id="prevBlock">__T:nav.anterior__</button></nav>` : `<nav class="block-nav"><button class="text-btn" id="prevBlock" ${sesion === 1 && bloque === 0 ? 'disabled' : ''}>__T:nav.anterior__</button><button class="text-btn" id="nextBlock">__T:nav.siguiente__</button></nav>`;'''
+          s = one(s, old, new, 'navegación del cierre')
+
+          # F: estructura distinta para comando y salida, con etiquetas de textos.json.
+          old = '''out.push(`<div class="code-wrap ${output ? 'code-output' : 'code-command'}">${output ? '' : "<button class=\\"copy-btn\\" type=\\"button\\">__T:sesion.copiar__</button>"}<pre><code>${esc(x.code.replace(/\\n$/, ''))}</code></pre></div>`);'''
+          new = '''const label = output ? textos.sesion.etiquetaSalida : textos.sesion.etiquetaComando;out.push(`<div class="code-wrap ${output ? 'code-output' : 'code-command'}"><div class="code-label">${esc(label)}</div>${output ? '' : `<div class="code-frame"><div class="code-head"><span aria-hidden="true">$</span><button class="copy-btn" type="button">__T:sesion.copiar__</button></div>`}<pre><code>${esc(x.code.replace(/\\n$/, ''))}</code></pre>${output ? '' : '</div>'}</div>`);'''
+          s = one(s, old, new, 'estructura de bloques de código')
+          s = one(s, "const text = b.parentElement.querySelector('code').textContent;", "const text = b.closest('.code-wrap').querySelector('code').textContent;", 'copiar comando')
+          p.write_text(s, encoding='utf-8')
+
+          p = Path('build/plantilla.html')
+          s = p.read_text(encoding='utf-8')
+
+          # Aplicar preferencia manual antes de pintar para evitar un cambio visible de tema.
+          s = one(s,
+              '<title>__T:nav.curso__</title>\n<style>',
+              '<title>__T:nav.curso__</title>\n<script>(()=>{try{const t=localStorage.getItem(\'cursoVpsTemaV1\');if(t===\'light\'||t===\'dark\')document.documentElement.dataset.theme=t;}catch(_){}})();</script>\n<style>',
+              'arranque de tema')
+
+          light = ':root{--p:#fafaf7;--p2:#f1f1ec;--i:#191c1a;--m:#646a64;--l:#dcded8;--s:#1d221f;--si:#dce1da;--a:#2d5d93;--ok:#2e6b4f;--w:#8a5a0b;--bad:#9c3328;--sans:ui-sans-serif,-apple-system,"Segoe UI",system-ui,sans-serif;--mono:ui-monospace,"SFMono-Regular",Consolas,monospace}'
+          dark_media = '@media(prefers-color-scheme:dark){:root{--p:#161916;--p2:#20241f;--i:#ecefe9;--m:#abb1a9;--l:#343a34;--s:#101310;--si:#dde2da;--a:#7fa9d8;--ok:#67b18a;--w:#d6a450;--bad:#e17c70}}'
+          themed = ':root{--p:#fafaf7;--p2:#f1f1ec;--i:#191c1a;--m:#646a64;--l:#dcded8;--s:#1d221f;--sb:#141815;--si:#dce1da;--cb:#3f4740;--a:#2d5d93;--ok:#2e6b4f;--w:#8a5a0b;--bad:#9c3328;--sans:ui-sans-serif,-apple-system,"Segoe UI",system-ui,sans-serif;--mono:ui-monospace,"SFMono-Regular",Consolas,monospace;color-scheme:light}\n:root[data-theme="dark"]{--p:#161916;--p2:#20241f;--i:#ecefe9;--m:#abb1a9;--l:#343a34;--s:#232923;--sb:#1c211c;--si:#edf1eb;--cb:#4a554b;--a:#7fa9d8;--ok:#67b18a;--w:#d6a450;--bad:#e17c70;color-scheme:dark}\n@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--p:#161916;--p2:#20241f;--i:#ecefe9;--m:#abb1a9;--l:#343a34;--s:#232923;--sb:#1c211c;--si:#edf1eb;--cb:#4a554b;--a:#7fa9d8;--ok:#67b18a;--w:#d6a450;--bad:#e17c70;color-scheme:dark}}'
+          s = one(s, light + '\n' + dark_media, themed, 'variables de tema')
+
+          old_code = '.code-wrap{position:relative;margin:1.2em 0}.code-wrap pre{margin:0;overflow:auto;font:15px/1.65 var(--mono);white-space:pre}.code-command pre{background:var(--s);color:var(--si);padding:18px 48px 18px 38px}.code-command pre:before{content:"$";position:absolute;left:17px;color:#8f978e}.copy-btn{position:absolute;right:8px;top:8px;border:1px solid #596159;background:transparent;color:var(--si);font-size:12px;padding:5px 7px;cursor:pointer}.code-output pre{background:var(--p2);padding:16px 18px;border-left:3px solid var(--m)}'
+          new_code = '.code-wrap{position:relative;margin:1.2em 0}.code-label{font-size:12px;color:var(--m);margin:0 0 6px;font-weight:650}.code-wrap pre{margin:0;overflow:auto;font:15px/1.65 var(--mono);white-space:pre}.code-frame{border:1px solid var(--cb);background:var(--s)}.code-command pre{background:transparent;color:var(--si);padding:16px 18px}.code-head{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--cb);background:var(--sb);color:var(--si);padding:6px 8px 6px 14px;font:13px var(--mono)}.copy-btn{position:static;border:1px solid var(--cb);background:transparent;color:var(--si);font-size:12px;padding:5px 7px;cursor:pointer}.code-output pre{background:transparent;padding:12px 18px;border-left:3px solid var(--m)}'
+          s = one(s, old_code, new_code, 'apariencia de comando y salida')
+
+          s = one(s,
+              '.map-session .select{width:100%;max-width:none}@media(max-width:760px)',
+              '.map-session .select{width:100%;max-width:none}.settings-group{margin:22px 0;padding-bottom:18px;border-bottom:1px solid var(--l)}.settings-group label{display:block;font-size:13px;color:var(--m);margin-bottom:7px}.settings-group .select{width:100%;max-width:none}@media(max-width:760px)',
+              'estilo selector de tema')
+
+          old_settings = '<div class="dialog" id="settingsDialog" aria-hidden="true"><div class="backdrop" data-settings-close></div><section class="panel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle"><button class="btn close" data-settings-close>__T:nav.cerrar__</button><div class="eyebrow" id="settingsTitle">__T:ajustes.titulo__</div><div class="menu-list"><button class="menu-action" id="settingsProfiles" type="button">__T:ajustes.perfiles__</button></div></section></div>'
+          new_settings = '<div class="dialog" id="settingsDialog" aria-hidden="true"><div class="backdrop" data-settings-close></div><section class="panel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle"><button class="btn close" data-settings-close>__T:nav.cerrar__</button><div class="eyebrow" id="settingsTitle">__T:ajustes.titulo__</div><div class="settings-group"><label for="themeSelect">__T:ajustes.tema__</label><select class="select" id="themeSelect"><option value="system">__T:ajustes.temaSistema__</option><option value="light">__T:ajustes.temaClaro__</option><option value="dark">__T:ajustes.temaOscuro__</option></select></div><div class="menu-list"><button class="menu-action" id="settingsProfiles" type="button">__T:ajustes.perfiles__</button></div></section></div>'
+          s = one(s, old_settings, new_settings, 'selector de tema en ajustes')
+
+          s = one(s,
+              "const sel=by('sessionSelect'),menu=by('menuDialog'),settings=by('settingsDialog'),menuBtn=by('menuBtn'),menuList=by('menuList');",
+              "const sel=by('sessionSelect'),menu=by('menuDialog'),settings=by('settingsDialog'),menuBtn=by('menuBtn'),menuList=by('menuList'),themeSelect=by('themeSelect');",
+              'referencia a tema')
+          s = one(s,
+              "const closeMenu=()=>{close(menu);menuBtn.setAttribute('aria-expanded','false')};\nconst session=()=>Math.max(1,Math.min(20,Number(sel?.value)||1));",
+              "const closeMenu=()=>{close(menu);menuBtn.setAttribute('aria-expanded','false')};\nconst THEME_KEY='cursoVpsTemaV1';\nconst themeValue=()=>{try{const v=localStorage.getItem(THEME_KEY);return ['system','light','dark'].includes(v)?v:'system';}catch(_){return 'system';}};\nconst applyTheme=v=>{if(v==='light'||v==='dark')document.documentElement.dataset.theme=v;else delete document.documentElement.dataset.theme;try{localStorage.setItem(THEME_KEY,v);}catch(_){}};\nthemeSelect.value=themeValue();applyTheme(themeSelect.value);themeSelect.addEventListener('change',()=>applyTheme(themeSelect.value));\nconst session=()=>Math.max(1,Math.min(20,Number(sel?.value)||1));",
+              'persistencia de tema')
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Validar cambios
+        run: |
+          for f in build/*.js; do node --check "$f"; done
+          python3 -m json.tool datos/textos.json >/dev/null
+          python3 -m py_compile build/construir.py build/parse_curso.py
+          count=$(grep -EIn '[áéíóúñüÁÉÍÓÚÑÜ¿¡]' build/*.js | wc -l || true)
+          echo "grep_accent_lines=$count"
+          test "$count" -eq 0
+          python3 build/construir.py
+          test -s public/index.html
+          ! grep -q '__T:' public/index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          app=Path('build/app.js').read_text(encoding='utf-8')
+          tpl=Path('build/plantilla.html').read_text(encoding='utf-8')
+          assert "cierre ? `<nav class=\"block-nav\"><button class=\"text-btn\" id=\"prevBlock\">__T:nav.anterior__</button></nav>`" in app
+          assert 'textos.sesion.etiquetaComando' in app and 'textos.sesion.etiquetaSalida' in app
+          assert "closest('.code-wrap').querySelector('code')" in app
+          assert 'id="themeSelect"' in tpl
+          assert 'value="system"' in tpl and 'value="light"' in tpl and 'value="dark"' in tpl
+          assert 'cursoVpsTemaV1' in tpl and 'data-theme="dark"' in tpl
+          assert ':root:not([data-theme="light"])' in tpl
+          assert '.code-frame{border:1px solid var(--cb)' in tpl
+          assert '.code-output pre{background:transparent' in tpl
+          print('E_PREVIOUS_FROM_CLOSE=ok')
+          print('F_THEME_PERSISTENCE=ok')
+          print('F_CODE_OUTPUT_STRUCTURE=ok')
+          PY
+
+      - name: Publicar fase F
+        run: |
+          git config user.name "SergioAguis32"
+          git config user.email "sergioaguis32@gmail.com"
+          git add build/app.js build/plantilla.html
+          git commit -m "v2 fase F: temas y bloques de terminal"
+          git push origin main
